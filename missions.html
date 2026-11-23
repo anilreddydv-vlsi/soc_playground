@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Guided missions that take you from building your first SoC to finding bugs, with badges to earn and trainer challenges.">
+<title>Missions and Badges</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23060a14%27/%3E%3Crect x=%279%27 y=%279%27 width=%2714%27 height=%2714%27 rx=%272%27 fill=%27none%27 stroke=%27%2322d3ee%27 stroke-width=%272.5%27/%3E%3Cpath d=%27M13 5v4M19 5v4M13 23v4M19 23v4M5 13h4M5 19h4M23 13h4M23 19h4%27 stroke=%27%2322d3ee%27 stroke-width=%272%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;600;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/series.css">
+<style>
+a.mission-go{display:inline-flex;align-items:center;min-height:46px;padding:0 18px;border-radius:12px;font-weight:800;text-decoration:none;background:linear-gradient(135deg,#7c3aed,#0e7490);color:#fff;border:1.5px solid #c4b5fd;box-shadow:0 4px 0 #2e1065,0 0 22px rgba(139,92,246,.5)}
+</style>
+</head>
+<body>
+<nav class="series" aria-label="SoC Playground pages"><a class="home" href="index.html">SoC Playground home</a><a href="missions.html" aria-current="page">1 · Missions</a><a href="build.html">2 · Build</a><a href="run.html">3 · Run</a><a href="verify.html">4 · Verify</a><a href="regress.html">5 · Regression</a><a href="export.html">6 · Export</a></nav>
+<header class="band" style="padding-bottom:12px"><div class="wrap">
+<h1>Missions and badges</h1>
+<p class="lede">Start here. Each mission is a short goal that teaches one idea, from building your first SoC to catching a hidden bug. Finish a mission and you earn its badge. Your progress is saved in this browser.</p>
+<nav class="toc" aria-label="On this page"><a href="#me">Your progress</a><a href="#list">Missions</a><a href="#badges">Badges</a><a href="#trainer">Trainer challenge</a></nav>
+<div class="key"><b>Colour key:</b><span><i class="k1"></i>Run or step an animation</span><span><i class="k3"></i>Load an example</span><span><i class="k4"></i>Jump to a section</span></div>
+</div></header>
+<main>
+<section class="band" id="me" style="padding-top:8px"><div class="wrap">
+<div class="hero">
+ <svg class="ring" viewBox="0 0 120 120" role="img" aria-label="Missions completed" id="ring"></svg>
+ <div><h2 style="margin:0 0 6px" id="hl">Your progress</h2><p id="hs" style="margin:0 0 10px"></p>
+  <div class="chips"><a class="mission-go" id="next" href="build.html">▶ Start: Build your first SoC</a></div></div>
+</div>
+</div></section>
+
+<section class="band alt" id="list"><div class="wrap">
+<h2>Missions</h2>
+<p>Do them in order the first time. Each one opens the right page; come back here to see your tick.</p>
+<div class="missions" id="ms"></div>
+</div></section>
+
+<section class="band" id="badges"><div class="wrap">
+<h2>Badges</h2>
+<div class="badges" id="bg"></div>
+<p style="margin-top:14px"><button type="button" id="rst">↺ Reset my progress</button></p>
+</div></section>
+
+<section class="band alt" id="trainer"><div class="wrap">
+<h2>Trainer challenge</h2>
+<p>Teaching a class? Build a SoC on the Build page, then pick a bug here. You get a link that opens your SoC on the Verify page with that bug hidden. Students run tests and make their diagnosis. The bug is only encoded in the link, not encrypted, so it stops guessing, not determined peeking.</p>
+<div class="demo">
+ <aside class="ctrl" aria-label="Create a challenge">
+  <div class="tryhd"><b>Try it</b><span>Make a challenge link</span></div>
+  <div><label class="lab" for="cb">Bug to hide</label><select id="cb"></select></div>
+  <button type="button" class="act" id="mk">🔗 Create challenge link</button>
+ </aside>
+ <div class="out"><label class="lab" for="cl">Challenge link</label><textarea id="cl" rows="4" readonly style="width:100%;box-sizing:border-box;font:13px 'JetBrains Mono',monospace;background:#0a1120;color:var(--ink);border:1.5px solid #34507f;border-radius:10px;padding:10px"></textarea>
+  <div class="chips"><button type="button" id="cp">Copy link</button><a id="op" href="verify.html" target="_blank" rel="noopener">Open it to test →</a></div>
+  <p class="hint" id="cm" role="status"></p></div>
+</div>
+</div></section>
+
+</main>
+<footer class="band" style="padding-top:8px"><div class="wrap">
+<p style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:none"><a href="index.html">← Home</a><a href="index.html">All pages</a><a href="build.html">2 · Build →</a></p>
+<p>SoC Playground is a learning model: a small AXI and APB system simulated in your browser, close enough to real hardware to learn from, but not a real chip. Your design and badges are saved in this browser only.</p>
+</div></footer>
+<script src="assets/common.js"></script>
+<script src="assets/engine.js"></script>
+<script src="assets/extra.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+{
+const L = LAB, U = SOCUI, $ = id => document.getElementById(id);
+const d = L.load();
+// mission 1 is checked from the saved design
+const has = t => d.blocks.some(b => b.t === t);
+if (!L.checks(d).some(c => c.lvl === 'err') && has('cpu') && has('bridge') && d.blocks.some(b => L.TYPES[b.t].k === 'mem') && d.blocks.some(b => L.TYPES[b.t].k === 'per')) L.progress.mark('build-ok');
+function render() {
+  const ev = L.progress.get().ev, done = L.MISSIONS.filter(m => ev[m.ev]).length, N = L.MISSIONS.length, f = done / N;
+  const C = 2 * Math.PI * 50;
+  $('ring').innerHTML = `<defs><linearGradient id="rg" x1="0" x2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#f472b6"/></linearGradient></defs><circle cx="60" cy="60" r="50" fill="none" stroke="#1e293b" stroke-width="12"/><circle cx="60" cy="60" r="50" fill="none" stroke="url(#rg)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C * f} ${C}" transform="rotate(-90 60 60)"/><text x="60" y="58" text-anchor="middle" fill="#fff" font-size="26" font-weight="800">${done}/${N}</text><text x="60" y="78" text-anchor="middle" fill="#8fa2c2" font-size="12">missions</text>`;
+  const nx = L.MISSIONS.find(m => !ev[m.ev]);
+  $('hl').textContent = done === N ? 'All missions complete. You are a SoC verifier!' : done ? 'Nice progress. Keep going!' : 'Welcome! Start with mission 1.';
+  $('hs').textContent = `${done} of ${N} missions done · ${L.BADGES.filter(b => ev[b.ev]).length} of ${L.BADGES.length} badges earned.`;
+  $('next').textContent = nx ? `▶ Next: ${nx.n}` : '▶ Explore freely: Build'; $('next').href = nx ? nx.page : 'build.html';
+  $('ms').innerHTML = L.MISSIONS.map(m => `<div class="mission${ev[m.ev] ? ' done' : ''}"><h3>${U.esc(m.n)}</h3><ol>${m.steps.map(s => `<li>${U.esc(s)}</li>`).join('')}</ol><a class="go" href="${m.page}">${ev[m.ev] ? 'Do it again' : 'Start'} →</a></div>`).join('');
+  $('bg').innerHTML = L.BADGES.map(b => `<div class="badge${ev[b.ev] ? ' got' : ''}"><span class="ic" aria-hidden="true">${b.i}</span><b>${b.n}</b><small>${U.esc(b.d)}</small><small>${ev[b.ev] ? '✓ earned' : 'locked'}</small></div>`).join('');
+}
+$('rst').onclick = () => { L.progress.reset(); render(); };
+const TG = L.bugTargets(d);
+$('cb').innerHTML = TG.map((g, i) => `<option value="${i}">${U.esc(g.label)}</option>`).join('') || '<option value="">Add blocks on the Build page first</option>';
+$('mk').onclick = () => {
+  const g = TG[+$('cb').value]; if (!g) { $('cm').textContent = 'Your SoC has no blocks yet.'; return; }
+  const u = L.share.link('verify.html', d, {bug: {blk: g.blk, bug: g.bug}});
+  $('cl').value = u; $('op').href = u; $('cm').textContent = 'Send this link to your students. It opens Verify with your SoC and the hidden bug.';
+};
+$('cp').onclick = () => { const v = $('cl').value; if (!v) return; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => $('cm').textContent = 'Copied.', () => { $('cl').select(); $('cm').textContent = 'Select the text and copy it.'; }); };
+render();
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Run software on your SoC: watch transfers travel the wires, follow an interrupt, see AXI reads return out of order, and read AXI and APB waveforms.">
+<title>Run Your SoC</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23060a14%27/%3E%3Crect x=%279%27 y=%279%27 width=%2714%27 height=%2714%27 rx=%272%27 fill=%27none%27 stroke=%27%2322d3ee%27 stroke-width=%272.5%27/%3E%3Cpath d=%27M13 5v4M19 5v4M13 23v4M19 23v4M5 13h4M5 19h4M23 13h4M23 19h4%27 stroke=%27%2322d3ee%27 stroke-width=%272%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;600;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/series.css">
+
+</head>
+<body>
+<nav class="series" aria-label="SoC Playground pages"><a class="home" href="index.html">SoC Playground home</a><a href="missions.html">1 · Missions</a><a href="build.html">2 · Build</a><a href="run.html" aria-current="page">3 · Run</a><a href="verify.html">4 · Verify</a><a href="regress.html">5 · Regression</a><a href="export.html">6 · Export</a></nav>
+<header class="band" style="padding-bottom:12px"><div class="wrap">
+<h1>Run software on your SoC</h1>
+<p class="lede">Pick a task and watch the CPU run it on the SoC you built. Each step is one bus transfer: see which blocks it passes through, what the peripherals do, and the AXI and APB signals cycle by cycle. The tasks you see depend on the blocks you placed.</p>
+<nav class="toc" aria-label="On this page"><a href="#lab">Run it</a><a href="#irqflow">Interrupt flow</a><a href="#ooo">Out-of-order reads</a><a href="#how">How a transfer travels</a><a href="#quiz">Quiz</a></nav>
+<div class="key"><b>Colour key:</b><span><i class="k3"></i>Load an example</span><span><i class="k1"></i>Run or step an animation</span><span><i class="k2"></i>Option you can pick</span><span><i class="k2s"></i>Option selected</span><span><i class="k4"></i>Jump to a section</span></div>
+</div></header>
+<main>
+<section class="band" id="lab" style="padding-top:8px"><div class="wrap">
+<div id="ban"></div>
+<div class="demo">
+ <aside class="ctrl" aria-label="Run controls">
+  <div class="tryhd"><b>Try it</b><span>Pick a task, or type your own transfer</span></div>
+  <div><span class="lab">1. Software tasks</span><div class="stack" id="tasks"></div></div>
+  <div><span class="lab">2. Or do one transfer yourself</span>
+   <div class="seg" id="rw"><button type="button" class="opt" data-v="0">Read</button><button type="button" class="opt" data-v="1">Write</button></div>
+   <label class="lab" for="tg" style="margin-top:10px">Target</label><select id="tg"></select>
+   <div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><div><label class="lab" for="ad">Address</label><input type="text" id="ad" autocomplete="off"></div><div><label class="lab" for="dt">Write data</label><input type="text" id="dt" value="0x0000_0041" autocomplete="off"></div></div>
+   <button type="button" class="act" id="go" style="margin-top:10px;width:100%">▶ Send this transfer</button></div>
+  <button type="button" id="rst">↺ Reset the SoC</button>
+  <div><span class="lab">Speed</span><div class="seg" id="spd"><button type="button" class="opt" data-v="700">Slow</button><button type="button" class="opt" data-v="300">Normal</button><button type="button" class="opt" data-v="0">Instant</button></div></div>
+ </aside>
+ <div class="out">
+  <div class="verdict" id="now" aria-live="polite">Pick a task on the left.</div>
+  <div id="soc"></div>
+  <div class="board">
+   <div class="card"><h3>UART terminal</h3><div id="uarts"></div></div>
+   <div class="card"><h3>GPIO pins</h3><div id="gp"></div></div>
+   <div class="card"><h3>I2C bus</h3><div class="i2clog" id="i2c"></div></div>
+   <div class="card"><h3>Interrupt lines</h3><div class="irqs" id="irq"></div><p class="hint" id="irqh" style="margin:8px 0 0"></p></div>
+  </div>
+  <div><h3>Waveform of the selected transfer</h3><p class="hint" id="wcap" style="margin:0 0 6px"></p><div class="wavebox" id="wave"></div><p class="sighelp" id="sh">Tip: tap a signal name for what it means.</p>
+   <div class="wlegend" style="margin-top:6px"><span><i style="background:#22d3ee"></i>AXI signal</span><span><i style="background:#a78bfa"></i>APB signal (behind the bridge)</span><span><i style="background:#34d399"></i>READY handshake</span><span><i style="background:#f87171"></i>error response</span></div></div>
+  <div><h3>Transfer log <small class="hint">tap a row for its waveform</small></h3><div class="log"><table><thead><tr><th scope="col">#</th><th scope="col">Master</th><th scope="col">Op</th><th scope="col">Address</th><th scope="col">Block</th><th scope="col">Data</th><th scope="col">Resp</th></tr></thead><tbody id="lg"></tbody></table></div></div>
+ </div>
+</div>
+</div></section>
+
+<section class="band alt" id="irqflow"><div class="wrap">
+<h2>Interrupt flow</h2>
+<p>An interrupt lets a peripheral tell the CPU “I need you” instead of the CPU asking again and again. Step through it on your SoC. Each step runs real transfers, which you can see in the transfer log above.</p>
+<div class="demo">
+ <aside class="ctrl" aria-label="Interrupt flow controls">
+  <div class="tryhd"><b>Try it</b><span>Step through one interrupt</span></div>
+  <button type="button" class="act" id="fnext">▶ Next step</button>
+  <button type="button" id="fplay">⏵ Play all</button>
+  <button type="button" id="frst">↺ Restart</button>
+  <p class="hint" id="fneed" style="margin:0"></p>
+ </aside>
+ <div class="out"><div class="flow" id="flow"></div><div class="verdict" id="fsay" aria-live="polite">Press Next step.</div></div>
+</div>
+</div></section>
+
+<section class="band" id="ooo"><div class="wrap">
+<h2>Out-of-order reads</h2>
+<p>An AXI master can send a second read before the first one returns. Each read carries an ID (<code>ARID</code>). A slow memory and a fast memory finish at different times, so the data can come back in a different order. <code>RID</code> on the data tells the master which request it answers.</p>
+<div class="demo">
+ <aside class="ctrl" aria-label="Out-of-order controls">
+  <div class="tryhd"><b>Try it</b><span>Two reads, two IDs</span></div>
+  <button type="button" class="act" id="oplay">▶ Play</button>
+  <button type="button" id="ostep">Step one cycle</button>
+  <button type="button" id="orst">↺ Restart</button>
+ </aside>
+ <div class="out"><div class="verdict" id="osay" aria-live="polite"></div><div class="wavebox" id="owave"></div><p class="sighelp" id="osh">Tap a signal name for what it means.</p></div>
+</div>
+</div></section>
+
+<section class="band alt" id="how"><div class="wrap">
+<h2>How a transfer travels</h2>
+<div class="rules">
+ <div><h3>Master asks</h3><p>The CPU puts an address on the AXI address channel (<code>AWADDR</code> for a write, <code>ARADDR</code> for a read) and raises VALID. If the DMA is also asking, the arbiter decides who goes first.</p></div>
+ <div><h3>Decoder picks a slave</h3><p>The interconnect compares the address with every window in the address map. No match means the default slave answers <code>DECERR</code>.</p></div>
+ <div><h3>Memory answers on AXI</h3><p>SRAM answers in a cycle or two. DDR waits its read latency before the first data beat. A burst moves several beats for one address.</p></div>
+ <div><h3>Bridge converts to APB</h3><p>For a peripheral, the bridge runs an APB setup cycle and an access cycle, plus one cycle per wait state, then gives the AXI response. That is why peripherals are slower.</p></div>
+ <div><h3>Peripheral acts</h3><p>Writing a register can do something: send a UART byte, light an LED, start the DMA. Reading can return status, such as a timer count.</p></div>
+ <div><h3>Response returns</h3><p>Every transfer ends with a response: <code>OKAY</code>, <code>SLVERR</code> (the slave refused it) or <code>DECERR</code> (nobody is at that address).</p></div>
+</div>
+</div></section>
+
+<section class="band" id="quiz"><div class="wrap">
+<h2>Quiz</h2>
+<div class="quiz" id="qz"></div>
+</div></section>
+
+</main>
+<footer class="band" style="padding-top:8px"><div class="wrap">
+<p style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:none"><a href="build.html">← 2 · Build</a><a href="index.html">All pages</a><a href="verify.html">4 · Verify →</a></p>
+<p>SoC Playground is a learning model: a small AXI and APB system simulated in your browser, close enough to real hardware to learn from, but not a real chip. Your design and badges are saved in this browser only.</p>
+</div></footer>
+<script src="assets/common.js"></script>
+<script src="assets/engine.js"></script>
+<script src="assets/extra.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+{
+const L = LAB, U = SOCUI, T = L.TYPES, $ = id => document.getElementById(id);
+const d = L.load(); let S, log, sel, busy = false, rw = 0, speed = 300, timer = null;
+U.designBanner($('ban'), d);
+const blk = t => d.blocks.find(b => b.t === t), blks = t => d.blocks.filter(b => b.t === t);
+const reg = (b, n) => (b.base + L.regsOf(b).find(r => r.n === n).o) >>> 0;
+const W = (a, v, why) => ({w: 1, a, d: v >>> 0, why}), R = (a, why) => ({w: 0, a, why});
+function freeAxi() { for (const a of [0x60000000, 0x80000000, 0xF0000000]) if (!L.windows(d).some(w => w.side === 'axi' && a >= w.base && a <= w.end)) return a; return 0xFFFFF000; }
+function tasks() {
+  const o = [], mems = d.blocks.filter(b => T[b.t].k === 'mem'), wm = mems.filter(b => b.t !== 'rom');
+  for (const u of blks('uart')) o.push([`Say hello on ${u.name}`, 'TXDATA writes appear in the terminal', [W(reg(u, 'CTRL'), 1, 'enable TX'), ...[...'Hello SoC!'].map(c => W(reg(u, 'TXDATA'), c.charCodeAt(0), `send '${c}'`)), R(reg(u, 'STATUS'), 'TX empty?')]]);
+  for (const g of blks('gpio')) o.push([`Blink LEDs on ${g.name}`, 'pins 7..0 as outputs', [W(reg(g, 'DIR'), 0xFF, 'all pins output'), W(reg(g, 'OUT'), 0x55, 'pattern 0101_0101'), W(reg(g, 'OUT'), 0xAA, 'pattern 1010_1010'), W(reg(g, 'DIR'), 0x0F, 'pins 7..4 back to inputs'), R(reg(g, 'IN'), 'read the pins')]]);
+  const ic = blk('irq');
+  for (const t of blks('timer')) o.push([`Timer interrupt on ${t.name}`, 'count down, raise INT, clear it', [W(reg(t, 'LOAD'), 3, 'start value 3'), ...(ic ? [W(reg(ic, 'ENABLE'), 0xFF, 'enable interrupts')] : []), W(reg(t, 'CTRL'), 1, 'start counting'), R(reg(t, 'COUNT'), 'COUNT'), R(reg(t, 'COUNT'), 'COUNT'), R(reg(t, 'INT'), 'INT is 1'), ...(ic ? [R(reg(ic, 'STATUS'), 'which interrupt?')] : []), W(reg(t, 'INT'), 1, 'write 1 to clear'), W(reg(t, 'CTRL'), 0, 'stop')]]);
+  const wd = blk('wdt'); if (wd) o.push(['Watchdog: kick, then let it bite', 'the flag sets when nobody kicks', [W(reg(wd, 'LOAD'), 4, 'timeout 4'), W(reg(wd, 'CTRL'), 1, 'enable'), R(reg(wd, 'COUNT'), 'counting'), W(reg(wd, 'KICK'), 0x5A, 'kick: reload'), R(reg(wd, 'COUNT'), 'reloaded'), R(reg(wd, 'COUNT'), 'no more kicks…'), R(reg(wd, 'COUNT'), '…'), R(reg(wd, 'FLAG'), 'FLAG = 1: watchdog bit'), W(reg(wd, 'CTRL'), 0, 'disable'), W(reg(wd, 'FLAG'), 1, 'clear')]]);
+  const i2 = blk('i2c'); if (i2) o.push(['Send two bytes on I2C', 'to target 0x50', [W(reg(i2, 'CTRL'), 1, 'enable'), W(reg(i2, 'ADDR'), 0x50, 'target 0x50'), W(reg(i2, 'TXDATA'), 0x3C, 'send 0x3C'), W(reg(i2, 'TXDATA'), 0x7E, 'send 0x7E'), R(reg(i2, 'STATUS'), 'done'), W(reg(i2, 'STATUS'), 1, 'clear done')]]);
+  const dm = blk('dma');
+  if (dm && blk('bridge') && wm.length) {
+    const src = mems.find(b => b.t === 'rom') || wm[0], dst = wm[wm.length - 1];
+    const sa = src.base, da = dst.base + (src === dst ? 0x800 : 0x100);
+    const fill = src.t === 'rom' ? [] : Array.from({length: 8}, (_, k) => W(sa + 4 * k, 0xCAFE0000 + k, 'fill source'));
+    o.push([`DMA: copy 8 words ${src.name} → ${dst.name}`, 'one 8-beat read burst, one write burst', [...fill, W(reg(dm, 'SRC'), sa, 'source'), W(reg(dm, 'DST'), da, 'destination'), W(reg(dm, 'LEN'), 32, '32 bytes'), W(reg(dm, 'CTRL'), 1, 'start'), R(reg(dm, 'STATUS'), 'done'), R(da, 'first copied word'), R(da + 28, 'last copied word'), W(reg(dm, 'STATUS'), 1, 'clear')]]);
+    const big = wm.filter(b => b.p.size > 4096);
+    if (big.length) { const m = big[0], s = m.base + 0xFF0, t = m.base + 0x2FF0; o.push([`DMA across a 4 KB boundary in ${m.name}`, 'the DMA splits each burst at 4 KB', [...Array.from({length: 8}, (_, k) => W(s + 4 * k, 0xB0B00000 + k, 'fill')), W(reg(dm, 'SRC'), s, 'source near 4 KB edge'), W(reg(dm, 'DST'), t, 'destination'), W(reg(dm, 'LEN'), 32, '32 bytes'), W(reg(dm, 'CTRL'), 1, 'start'), R(reg(dm, 'STATUS'), 'done'), W(reg(dm, 'STATUS'), 1, 'clear')]]); }
+  }
+  const rom = blk('rom'); if (rom) o.push(['Read the boot ROM, then try to write it', 'ROM refuses writes with SLVERR', [R(rom.base, 'first word'), R(rom.base + 4, 'second word'), W(rom.base, 0x12345678, 'try to write'), R(rom.base, 'unchanged')]]);
+  if (wm.length) { const m = wm[0]; o.push([`Store and load in ${m.name}`, 'plain memory writes and reads', [W(m.base + 0x10, 0x600DF00D, 'store'), R(m.base + 0x10, 'load'), W(m.base + m.p.size - 4, 0x1A57, 'last word'), R(m.base + m.p.size - 4, 'load last word')]]); }
+  const ops = [R(freeAxi(), 'nobody here → DECERR')];
+  if (blk('bridge')) for (let i = 15; i >= 0; i--) { const a = L.BRIDGE_BASE + i * 0x1000; if (!d.blocks.some(b => b.base === a && b.t !== 'bridge')) { ops.push(R(a, 'empty APB slot → SLVERR')); break; } }
+  o.push(['Read addresses nobody owns', 'see the error responses', ops]);
+  return o;
+}
+const TK = tasks();
+$('tasks').innerHTML = TK.map((t, i) => `<button type="button" class="ex" data-i="${i}">${U.esc(t[0])}</button>`).join('') || '<p class="hint">Add blocks on the Build page.</p>';
+// manual transfer targets
+const opts = [];
+for (const b of d.blocks) { if (T[b.t].k === 'mem') opts.push([b.base, `${b.name}: word 0`]); else if (T[b.t].k === 'per' || b.t === 'dma') for (const r of L.regsOf(b)) opts.push([b.base + r.o, `${b.name}.${r.n} (${r.a})`]); }
+opts.push([freeAxi(), 'Unmapped address']);
+$('tg').innerHTML = opts.map(([a, n]) => `<option value="${a >>> 0}">${U.esc(n)}</option>`).join('');
+$('ad').value = L.HA(+$('tg').value);
+$('tg').onchange = () => $('ad').value = L.HA(+$('tg').value);
+const pick = (id, v) => { for (const b of $(id).children) b.setAttribute('aria-pressed', b.dataset.v === String(v)); };
+$('rw').onclick = e => { const b = e.target.closest('.opt'); if (b) { rw = +b.dataset.v; pick('rw', rw); } };
+$('spd').onclick = e => { const b = e.target.closest('.opt'); if (b) { speed = +b.dataset.v; pick('spd', speed); } };
+pick('rw', 0); pick('spd', 300);
+const parseHex = s => { const v = parseInt(String(s).replace(/_/g, '').replace(/^0x/i, ''), 16); return Number.isFinite(v) ? v >>> 0 : null; };
+
+function reset() { clearTimeout(timer); busy = false; S = L.system(d, null); log = []; sel = null; U.finalDiagram($('soc'), d, {noButtons: true, title: 'My SoC (live)'}); board(); table(); showWave(); $('now').className = 'verdict'; $('now').textContent = 'SoC reset. Pick a task on the left.'; }
+function exec(op) {
+  const before = S.out.dma.length, r = S.access(op.w, op.a, op.d);
+  const e = {master: 'CPU', w: op.w, a: op.a, d: op.d, rdata: r.rdata, resp: r.resp, tgt: r.tgt, side: r.side, apb: r.apb, lat: r.lat, why: op.why};
+  log.push(e);
+  for (const x of S.out.dma.slice(before)) for (const [w, a, tgt] of [[0, x.src, x.srcT], [1, x.dst, x.dstT]]) log.push({master: 'DMA', w, a, beats: x.n, data: x.data || [], resp: x.err ? 'SLVERR' : (w ? x.resp : 'OKAY'), tgt, side: 'mem', lat: w ? 0 : x.lat, why: `${w ? 'write' : 'read'} burst, ${x.n} beat${x.n > 1 ? 's' : ''}`});
+  return e;
+}
+function show(e) {
+  sel = log.length - 1;
+  $('soc')._speed = Math.max(500, speed * 1.6);
+  if (speed) U.pulse($('soc'), log[log.length - 1].master === 'DMA' ? log[log.length - 1] : e, d);
+  const nm = L.nameOf(d, e.a), bad = e.resp !== 'OKAY';
+  $('now').className = 'verdict' + (bad ? ' bad' : ' good');
+  $('now').innerHTML = `<strong>${e.w ? 'WRITE' : 'READ'} ${L.HA(e.a)}</strong> → ${U.esc(nm)} · ${e.w ? 'data ' + L.H(e.d) : 'read ' + L.H(e.rdata)} · <strong>${e.resp}</strong><br><span class="hint">${U.esc(e.why || '')}${log[sel].master === 'DMA' ? '' : ''}</span>`;
+  board(); table(); showWave();
+}
+function runOps(ops, name) {
+  if (busy) return; busy = true; let i = 0;
+  const step = () => {
+    if (i >= ops.length) { busy = false; if (/^Say hello/.test(name)) L.progress.mark('uart-hello'); if (/4 KB/.test(name)) L.progress.mark('dma4k'); $('now').insertAdjacentHTML('beforeend', `<br><b style="color:#86efac">✓ ${U.esc(name)}: done in ${ops.length} CPU transfers.</b>`); return; }
+    show(exec(ops[i++]));
+    if (speed) timer = setTimeout(step, Math.max(speed, 900 * speed / 300)); else step();
+  };
+  step();
+}
+$('tasks').onclick = e => { const b = e.target.closest('[data-i]'); if (b) { const t = TK[+b.dataset.i]; runOps(t[2], t[0]); } };
+$('go').onclick = () => { if (busy) return; const a = parseHex($('ad').value), v = parseHex($('dt').value); if (a == null || a % 4) { $('now').className = 'verdict bad'; $('now').innerHTML = '<strong>Type a word-aligned hex address</strong>, such as 0x4000_0008.'; return; } show(exec({w: rw, a, d: v || 0, why: 'your transfer'})); };
+$('rst').onclick = reset;
+function board() {
+  const us = blks('uart');
+  $('uarts').innerHTML = us.length ? us.map(u => `<p class="hint" style="margin:0 0 4px">${U.esc(u.name)} · BAUD ${L.H(S.st[u.id].r.BAUD, 4)}</p><div class="term" aria-label="${U.esc(u.name)} output">${U.esc(String.fromCharCode(...S.out.uart[u.id]))}</div>`).join('') : '<p class="hint">No UART in your SoC.</p>';
+  const gs = blks('gpio');
+  $('gp').innerHTML = gs.length ? gs.map(g => { const r = S.st[g.id].r; return `<p class="hint" style="margin:0 0 6px">${U.esc(g.name)} · DIR ${L.H(r.DIR, 2)} · OUT ${L.H(r.OUT, 2)}</p><div class="leds">${[7, 6, 5, 4, 3, 2, 1, 0].map(k => { const out = r.DIR >> k & 1, lv = out ? r.OUT >> k & 1 : 0xA5 >> k & 1; return `<div class="led ${out ? 'out' : 'in'}${out && lv ? ' on' : ''}"><span></span>${k}<br>${out ? 'out' : 'in:' + lv}</div>`; }).join('')}</div>`; }).join('') : '<p class="hint">No GPIO in your SoC.</p>';
+  $('i2c').innerHTML = blk('i2c') ? (S.out.i2c.length ? S.out.i2c.map(x => x.en ? `<span>S 0x${x.addr.toString(16).toUpperCase().padStart(2, '0')}+W <b style="color:#86efac">ACK</b> 0x${x.data.toString(16).toUpperCase().padStart(2, '0')} <b style="color:#86efac">ACK</b> P</span>` : '<span style="color:#fca5a5">byte ignored: CTRL.enable is 0</span>').join('') : '<span class="hint">idle</span>') : '<span class="hint">No I2C controller in your SoC.</span>';
+  const lines = S.irqLines(), en = blk('irq') ? S.st[blk('irq').id].r.ENABLE : null;
+  $('irq').innerHTML = S.srcs.length ? S.srcs.map((s, k) => `<span class="${lines[k] ? 'on' : ''}">bit ${k} · ${U.esc(s.name)}</span>`).join('') : '<span>none</span>';
+  $('irqh').textContent = !S.srcs.length ? 'Timer, watchdog, I2C and DMA raise interrupts.' : blk('irq') ? `Interrupt controller ENABLE = ${L.H(en, 2)}; the CPU sees STATUS = PENDING AND ENABLE.` : 'No interrupt controller: the CPU must poll each block.';
+}
+function table() {
+  $('lg').innerHTML = log.map((e, i) => `<tr data-i="${i}"${i === sel ? ' class="sel"' : ''}><td>${i + 1}</td><td>${e.master}</td><td>${e.w ? 'WRITE' : 'READ'}${e.beats > 1 ? ' ×' + e.beats : ''}</td><td class="mono">${L.HA(e.a)}</td><td>${U.esc(L.nameOf(d, e.a))}</td><td class="mono">${e.beats ? (e.data.length ? L.H(e.data[0]) + (e.beats > 1 ? '…' : '') : '') : L.H(e.w ? e.d : e.rdata)}</td><td class="${e.resp === 'OKAY' ? 'ok' : 'bad'}">${e.resp}</td></tr>`).join('') || '<tr><td colspan="7" class="hint">No transfers yet.</td></tr>';
+  const r = $('lg').querySelector('tr.sel'), box = $('lg').closest('.log'); if (r && box) { const top = r.offsetTop - box.clientHeight + r.offsetHeight + 40; if (top > box.scrollTop) box.scrollTop = top; }
+}
+$('lg').onclick = e => { const r = e.target.closest('tr[data-i]'); if (!r) return; sel = +r.dataset.i; U.pulse($('soc'), log[sel], d); table(); showWave(); };
+U.sigHelp($('wave'), $('sh'));
+function showWave() {
+  if (sel == null) { $('wave').innerHTML = '<p class="hint" style="padding:10px">Run a transfer to see its waveform.</p>'; $('wcap').textContent = ''; return; }
+  const e = log[sel];
+  L.wave($('wave'), L.cycles(e), {label: 'Waveform of transfer ' + (sel + 1)});
+  $('wcap').textContent = e.beats ? `DMA ${e.w ? 'write' : 'read'} burst of ${e.beats} beat${e.beats > 1 ? 's' : ''} (AxLEN = ${e.beats - 1})${e.lat ? `, ${e.lat} cycles of read latency first` : ''}.` : e.apb ? `Through the bridge: AXI request, then APB setup, ${e.apb.wait} wait state${e.apb.wait === 1 ? '' : 's'}, access, then the AXI response.` : e.side === 'mem' ? `Straight to memory on AXI${e.lat ? ` with ${e.lat} wait or latency cycle${e.lat > 1 ? 's' : ''}` : ''}.` : 'No slave owns this address, so the default slave answers with an error.';
+}
+reset();
+/* ---------- interrupt flow ---------- */
+const tm = blk('timer'), icx = blk('irq');
+const FLOW = !tm ? [] : [
+  ['Timer counts', 'Load 3 and start', `The CPU writes LOAD = 3 and CTRL = 1. In this model COUNT drops by one on every bus transfer (a real timer counts clock cycles).`, [W(reg(tm, 'LOAD'), 3, 'load 3'), W(reg(tm, 'CTRL'), 1, 'start'), ...(icx ? [W(reg(icx, 'ENABLE'), 0xFF, 'enable interrupts')] : [])]],
+  ['COUNT reaches 0', 'INT = 1', 'When COUNT reaches 0 the timer sets its INT flag. The interrupt line from the timer goes high.', [R(reg(tm, 'COUNT'), 'COUNT'), R(reg(tm, 'COUNT'), 'COUNT going down'), R(reg(tm, 'INT'), 'INT is now 1')]],
+  ...(icx ? [['Controller collects', 'PENDING bit set', `The interrupt controller sees the line on bit ${S.srcs.indexOf(tm)}. PENDING shows it; ENABLE decides if the CPU should be told.`, [R(reg(icx, 'PENDING'), 'which lines are high')]]] : [['No controller', 'CPU must poll', 'Without an interrupt controller the CPU has no interrupt input, so it has to read INT again and again. Add an interrupt controller on the Build page to see the full flow.', []]]),
+  ['CPU is interrupted', 'IRQ input high', 'The CPU finishes its current instruction, saves where it was, and jumps to the interrupt handler.', []],
+  ['Handler finds the source', 'read STATUS', icx ? 'The handler reads STATUS = PENDING AND ENABLE to find which block interrupted.' : 'The handler reads the timer’s INT register.', [icx ? R(reg(icx, 'STATUS'), 'who interrupted?') : R(reg(tm, 'INT'), 'timer?')]],
+  ['Handler clears it', 'write 1 to INT', 'INT is write-1-to-clear: writing 1 clears it. Forgetting this is a classic bug: the CPU gets interrupted again forever.', [W(reg(tm, 'INT'), 1, 'clear INT'), W(reg(tm, 'CTRL'), 0, 'stop timer')]],
+  ['Line drops, CPU returns', 'back to work', 'The line is low again and the CPU returns to what it was doing.', [icx ? R(reg(icx, 'STATUS'), 'nothing pending') : R(reg(tm, 'INT'), 'INT = 0')]]
+];
+let fi = 0, fplay = null;
+function flowDraw() {
+  $('flow').innerHTML = FLOW.map((f, i) => `<div class="${i === fi - 1 ? 'on' : i < fi - 1 ? 'past' : ''}"><b>${i + 1}. ${f[0]}</b>${f[1]}</div>`).join('') || '<p class="hint">Add a timer on the Build page to try this.</p>';
+  $('fneed').textContent = tm ? (icx ? 'Uses your timer and interrupt controller.' : 'Tip: add an interrupt controller for the full flow.') : 'Needs a timer.';
+}
+function flowNext() {
+  if (!FLOW.length) return;
+  if (fi >= FLOW.length) { clearInterval(fplay); return; }
+  const f = FLOW[fi++]; for (const op of f[3]) show(exec(op));
+  const lines = S.irqLines(), on = lines.some(x => x);
+  $('fsay').className = 'verdict' + (fi === FLOW.length ? ' good' : '');
+  $('fsay').innerHTML = `<strong>Step ${fi}: ${f[0]}</strong><br>${f[2]}<br><span class="hint">Interrupt lines now: ${S.srcs.map((s, k) => `${U.esc(s.name)}=${lines[k]}`).join(', ') || 'none'}${on ? ' ⚡' : ''}</span>`;
+  flowDraw();
+  if (fi === FLOW.length) { clearInterval(fplay); L.progress.mark('irq-flow'); }
+}
+$('fnext').onclick = flowNext;
+$('fplay').onclick = () => { clearInterval(fplay); if (fi >= FLOW.length) { fi = 0; } fplay = setInterval(flowNext, 1600); flowNext(); };
+$('frst').onclick = () => { clearInterval(fplay); fi = 0; $('fsay').className = 'verdict'; $('fsay').textContent = 'Press Next step.'; flowDraw(); };
+flowDraw();
+
+/* ---------- out-of-order reads ---------- */
+const slow = blk('ddr') || {name: 'Slow memory', base: 0x20000000, p: {lat: 8}}, fast = blk('sram') || {name: 'Fast memory', base: 0x00000000, p: {wait: 0}};
+const LAT = slow.p.lat || 8;
+function oooCycles() {
+  const C = [], z = () => ({ARVALID: 0, ARREADY: 0, ARID: null, ARADDR: null, RVALID: 0, RID: null, RDATA: null, RLAST: 0, ph: ''});
+  const a0 = slow.base + 0x40, a1 = fast.base + 0x80;
+  let c = z(); c.ph = 'idle'; C.push(c);
+  c = z(); Object.assign(c, {ARVALID: 1, ARREADY: 1, ARID: 0, ARADDR: a0, ph: 'AR id 0'}); C.push(c);
+  c = z(); Object.assign(c, {ARVALID: 1, ARREADY: 1, ARID: 1, ARADDR: a1, ph: 'AR id 1'}); C.push(c);
+  c = z(); Object.assign(c, {RVALID: 1, RID: 1, RDATA: 0xFA570001, RLAST: 1, ph: 'R id 1'}); C.push(c);
+  for (let i = 0; i < LAT - 2; i++) { c = z(); c.ph = 'waiting'; C.push(c); }
+  c = z(); Object.assign(c, {RVALID: 1, RID: 0, RDATA: 0x510E0000, RLAST: 1, ph: 'R id 0'}); C.push(c);
+  c = z(); c.ph = 'idle'; C.push(c);
+  return C;
+}
+const OC = oooCycles(); let oi = 3, otimer = null;
+function oDraw() {
+  const C = OC.slice(0, oi).concat(OC.slice(oi).map(() => ({ph: ''})));
+  L.wave($('owave'), {rows: ['ACLK', 'ARVALID', 'ARID', 'ARADDR', 'RVALID', 'RID', 'RDATA', 'RLAST'], C}, {label: 'Out-of-order read waveform'});
+  const last = OC[oi - 1];
+  const say = oi <= 2 ? `The CPU sends read <b>ID 0</b> to ${U.esc(slow.name)} (${LAT} cycles of latency).` : oi === 3 ? `Without waiting, it sends read <b>ID 1</b> to ${U.esc(fast.name)}.` : last.RID === 1 ? `<b>ID 1 comes back first</b>, because ${U.esc(fast.name)} is fast. RID = 1 tells the CPU this is the second request's data.` : (last.RID === 0 || oi >= OC.length) ? `<b>ID 0 arrives last</b>. The CPU matches it by RID = 0. Reads with different IDs may complete out of order; reads with the same ID must stay in order.` : `${U.esc(slow.name)} is still working on ID 0…`;
+  $('osay').className = 'verdict' + (oi >= OC.length ? ' good' : ''); $('osay').innerHTML = say;
+  if (oi >= OC.length) { clearInterval(otimer); L.progress.mark('ooo'); }
+}
+$('ostep').onclick = () => { if (oi < OC.length) { oi++; oDraw(); } };
+$('oplay').onclick = () => { clearInterval(otimer); if (oi >= OC.length) oi = 1; otimer = setInterval(() => { if (oi < OC.length) { oi++; oDraw(); } else clearInterval(otimer); }, 600); };
+$('orst').onclick = () => { clearInterval(otimer); oi = 1; oDraw(); };
+oi = 1; oDraw(); U.sigHelp($('owave'), $('osh'));
+UI.quiz($('qz'), [
+ ['Why does a UART register write take more cycles than an SRAM write?', ['UART data is bigger', 'It goes through the bridge: APB setup, access and wait states are added', 'The arbiter slows it down'], 1, 'The bridge converts the AXI transfer into an APB transfer, which needs at least two cycles plus the slave’s wait states.'],
+ ['The DMA copies 32 bytes. What does it put on the bus?', ['32 single-byte transfers', 'One read burst of 8 beats and one write burst of 8 beats', 'One beat of 32 bytes'], 1, 'The bus is 32 bits wide, so 32 bytes is 8 beats. The DMA reads them as one burst and writes them as another.'],
+ ['The DMA copies across a 4 KB boundary. Why does it split the burst?', ['To save power', 'An AXI burst must not cross a 4 KB boundary', 'APB needs it'], 1, 'AXI forbids a burst from crossing a 4 KB address boundary, so the DMA ends one burst at the boundary and starts a new one.']
+]);
+}
+</script>
+
+</body>
+</html>

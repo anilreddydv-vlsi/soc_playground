@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Run every bug against every test on your SoC and see which tests catch which bugs.">
+<title>Regression Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23060a14%27/%3E%3Crect x=%279%27 y=%279%27 width=%2714%27 height=%2714%27 rx=%272%27 fill=%27none%27 stroke=%27%2322d3ee%27 stroke-width=%272.5%27/%3E%3Cpath d=%27M13 5v4M19 5v4M13 23v4M19 23v4M5 13h4M5 19h4M23 13h4M23 19h4%27 stroke=%27%2322d3ee%27 stroke-width=%272%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;600;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/series.css">
+
+</head>
+<body>
+<nav class="series" aria-label="SoC Playground pages"><a class="home" href="index.html">SoC Playground home</a><a href="missions.html">1 · Missions</a><a href="build.html">2 · Build</a><a href="run.html">3 · Run</a><a href="verify.html">4 · Verify</a><a href="regress.html" aria-current="page">5 · Regression</a><a href="export.html">6 · Export</a></nav>
+<header class="band" style="padding-bottom:12px"><div class="wrap">
+<h1>Regression dashboard</h1>
+<p class="lede">In a real project every test runs every night. Here every bug that can exist in your SoC is injected one at a time, and every test runs against it. The grid shows which tests catch which bugs, and which bugs escape a weaker testbench.</p>
+<nav class="toc" aria-label="On this page"><a href="#lab">Run the regression</a><a href="#read">How to read it</a><a href="#quiz">Quiz</a></nav>
+<div class="key"><b>Colour key:</b><span><i class="k1"></i>Run or step an animation</span><span><i class="k2"></i>Option you can pick</span><span><i class="k2s"></i>Option selected</span></div>
+</div></header>
+<main>
+<section class="band" id="lab" style="padding-top:8px"><div class="wrap">
+<div id="ban"></div>
+<div class="demo">
+ <aside class="ctrl" aria-label="Regression controls">
+  <div class="tryhd"><b>Try it</b><span>Pick a testbench, then run</span></div>
+  <div><span class="lab">Testbench</span><div class="stack" id="tbm"><button type="button" class="opt big" data-v="all"><span>Every part</span><small>monitors, model, scoreboard, coverage, both assertion sets</small></button><button type="button" class="opt big" data-v="basic"><span>Basic</span><small>driver, AXI monitor, model, scoreboard</small></button><button type="button" class="opt big" data-v="noassert"><span>No assertions</span><small>everything except the assertion sets</small></button></div></div>
+  <button type="button" class="act" id="go">▶ Run the full regression</button>
+  <p class="hint" id="info" style="margin:0"></p>
+ </aside>
+ <div class="out">
+  <div class="stats" id="st"></div>
+  <div class="verdict" id="vd" aria-live="polite">Press Run.</div>
+  <div class="card scroll"><table class="grid" id="gr"></table></div>
+  <div class="wlegend"><span><i style="background:#14532d;height:12px"></i>caught (test failed, good!)</span><span><i style="background:#1e293b;height:12px"></i>not caught by this test</span><span><i style="background:#7f1d1d;height:12px"></i>escaped every test</span></div>
+  <div class="card" id="det"><p class="hint" style="margin:0">Tap a cell to see how that test caught the bug.</p></div>
+ </div>
+</div>
+</div></section>
+
+<section class="band alt" id="read"><div class="wrap">
+<h2>How to read it</h2>
+<div class="rules">
+ <div><h3>A failing test is good news</h3><p>Here every row has a bug in it, so a red “FAIL” means the test did its job. A green cell is a catch.</p></div>
+ <div><h3>Rows that escape are holes</h3><p>A bug that no test catches is a hole in your verification. Fix it with a new test, a new check, or a missing testbench part.</p></div>
+ <div><h3>Some tests catch a lot</h3><p>Random and the address map test catch many bugs cheaply. Narrow bugs, like a watchdog that accepts any kick value, need a test written for that feature.</p></div>
+ <div><h3>Checks matter as much as stimulus</h3><p>Switch to “No assertions” and run again: protocol bugs such as a burst crossing 4 KB escape even though the same transfers ran.</p></div>
+</div>
+</div></section>
+
+<section class="band" id="quiz"><div class="wrap">
+<h2>Quiz</h2>
+<div class="quiz" id="qz"></div>
+</div></section>
+
+</main>
+<footer class="band" style="padding-top:8px"><div class="wrap">
+<p style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:none"><a href="verify.html">← 4 · Verify</a><a href="index.html">All pages</a><a href="export.html">6 · Export →</a></p>
+<p>SoC Playground is a learning model: a small AXI and APB system simulated in your browser, close enough to real hardware to learn from, but not a real chip. Your design and badges are saved in this browser only.</p>
+</div></footer>
+<script src="assets/common.js"></script>
+<script src="assets/engine.js"></script>
+<script src="assets/extra.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+{
+const L = LAB, U = SOCUI, $ = id => document.getElementById(id);
+const d = L.load(), bad = U.designBanner($('ban'), d);
+const tests = L.TESTS.filter(t => !t.need || t.need(d)), TG = L.bugTargets(d);
+let mode = 'all', R = null;
+const pick = v => { for (const b of $('tbm').children) b.setAttribute('aria-pressed', b.dataset.v === v); };
+$('tbm').onclick = e => { const b = e.target.closest('.opt'); if (b) { mode = b.dataset.v; pick(mode); } };
+pick(mode);
+$('info').textContent = `${TG.length} bugs × ${tests.length} tests = ${TG.length * tests.length} runs on your SoC.`;
+const tbSet = () => mode === 'all' ? L.TB.map(c => c.id) : mode === 'basic' ? L.TB_DEFAULT : L.TB.map(c => c.id).filter(c => c !== 'aax' && c !== 'aapb');
+$('go').onclick = () => {
+  if (bad || !TG.length) { $('vd').className = 'verdict bad'; $('vd').innerHTML = bad ? '<strong>Fix the design first.</strong>' : '<strong>No bugs to inject.</strong> Add blocks on the Build page.'; return; }
+  const t0 = performance.now();
+  R = TG.map(g => tests.map(t => { const E = L.env(d, g, tbSet()); const res = L.run(E, t.id === 'random' ? t.gen(d, 100, 1) : t.gen(d), t.n); const f = res.find(x => !x.ok); return f ? {f, n: res.length} : null; }));
+  const ms = Math.round(performance.now() - t0);
+  const caught = R.filter(r => r.some(Boolean)).length, esc = TG.length - caught;
+  $('gr').innerHTML = `<thead><tr><th scope="col">Bug</th>${tests.map(t => `<th scope="col" class="rot"><span>${t.n}</span></th>`).join('')}<th scope="col">Caught by</th></tr></thead><tbody>${TG.map((g, i) => { const n = R[i].filter(Boolean).length; return `<tr><th scope="row" style="font-weight:600;color:${n ? '#e7eef9' : '#fca5a5'}">${U.esc(g.label)}</th>${R[i].map((c, j) => `<td class="c ${c ? 'hit' : n ? 'miss' : 'esc'}" data-i="${i}" data-j="${j}" tabindex="0" aria-label="${U.esc(g.label)} with ${tests[j].n}: ${c ? 'caught' : 'not caught'}">${c ? '✓' : '·'}</td>`).join('')}<td>${n}</td></tr>`; }).join('')}</tbody><tfoot><tr><th scope="row">Bugs caught by this test</th>${tests.map((t, j) => `<td class="mono" style="text-align:center">${R.filter(r => r[j]).length}</td>`).join('')}<td></td></tr></tfoot>`;
+  const s = [['Bugs', TG.length], ['Tests', tests.length], ['Runs', TG.length * tests.length], ['Caught', caught], ['Escaped', esc], ['Time', ms + ' ms']];
+  $('st').innerHTML = s.map(([k, v]) => `<div class="stat"><span>${k}</span><strong>${v}</strong></div>`).join('');
+  const best = tests.map((t, j) => [t.n, R.filter(r => r[j]).length]).sort((a, b) => b[1] - a[1])[0];
+  $('vd').className = 'verdict ' + (esc ? 'bad' : 'good');
+  $('vd').innerHTML = esc ? `<strong>${esc} bug${esc > 1 ? 's' : ''} escaped every test</strong> with this testbench. Look at the red rows. Try “Every part”.` : `<strong>Every bug was caught.</strong> The strongest test was ${best[0]} (${best[1]} bugs).`;
+  L.progress.mark('regress');
+};
+$('gr').onclick = e => { const c = e.target.closest('td.c'); if (!c || !R) return; const g = TG[+c.dataset.i], t = tests[+c.dataset.j], r = R[+c.dataset.i][+c.dataset.j];
+  $('det').innerHTML = `<h3>${U.esc(g.label)} × ${t.n}</h3>` + (r ? `<p style="margin:0">Caught at transfer #${r.f.i} of ${r.n}: <b>${U.esc([...r.f.mism, ...r.f.asserts].join('; '))}</b>${r.f.a != null ? ` on ${L.HA(r.f.a)} (${U.esc(L.nameOf(d, r.f.a))})` : ''}.</p>` : `<p style="margin:0">${t.n} ran ${t.d.toLowerCase()} but never hit the broken behaviour, or nothing checked it.</p>`); };
+$('gr').onkeydown = e => { if (e.key === 'Enter') $('gr').onclick(e); };
+UI.quiz($('qz'), [
+ ['A bug row is all grey except one green cell. What does that tell you?', ['Only one test exercises and checks that feature', 'The bug is not real', 'The other tests are broken'], 0, 'Only one test reaches that behaviour and checks it. If that test were removed, the bug would escape.'],
+ ['With “No assertions”, the DMA 4 KB bug escapes but the data is still copied right. Why?', ['The scoreboard only compares data, and the data is correct', 'Coverage is off', 'The DMA test does not run'], 0, 'The bug breaks a protocol rule, not the data. Only a protocol checker on the bus signals can see it.'],
+ ['Why run every bug against every test, rather than one test per bug?', ['To find which tests are strong and which bugs slip through', 'Simulators require it', 'It makes coverage 100 %'], 0, 'The grid shows where your testbench is strong and where it has holes. Real teams use bug injection (mutation testing) the same way.']
+]);
+}
+</script>
+
+</body>
+</html>

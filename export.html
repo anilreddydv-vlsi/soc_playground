@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Share link, register spec, SystemVerilog package, decoders, APB register RTL with testbench, and a UVM register model generated from your SoC.">
+<title>Export Your SoC</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23060a14%27/%3E%3Crect x=%279%27 y=%279%27 width=%2714%27 height=%2714%27 rx=%272%27 fill=%27none%27 stroke=%27%2322d3ee%27 stroke-width=%272.5%27/%3E%3Cpath d=%27M13 5v4M19 5v4M13 23v4M19 23v4M5 13h4M5 19h4M23 13h4M23 19h4%27 stroke=%27%2322d3ee%27 stroke-width=%272%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;600;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/series.css">
+
+</head>
+<body>
+<nav class="series" aria-label="SoC Playground pages"><a class="home" href="index.html">SoC Playground home</a><a href="missions.html">1 · Missions</a><a href="build.html">2 · Build</a><a href="run.html">3 · Run</a><a href="verify.html">4 · Verify</a><a href="regress.html">5 · Regression</a><a href="export.html" aria-current="page">6 · Export</a></nav>
+<header class="band" style="padding-bottom:12px"><div class="wrap">
+<h1>Export your SoC</h1>
+<p class="lede">Everything here is generated from the SoC you built. Share it as a link, print its register spec, and take real SystemVerilog into a simulator: the address package, decoders, APB register RTL with a self-checking testbench, and a UVM register model.</p>
+<nav class="toc" aria-label="On this page"><a href="#map">Diagram</a><a href="#share">Share link</a><a href="#spec">Register spec</a><a href="#rtl">RTL and testbench</a><a href="#uvm">UVM register model</a><a href="#save">Save and load</a></nav>
+<div class="key"><b>Colour key:</b><span><i class="k3"></i>Load an example</span><span><i class="k4"></i>Jump to a section</span></div>
+</div></header>
+<main>
+<section class="band" id="map" style="padding-top:8px"><div class="wrap">
+<div id="ban"></div>
+<h2>Block diagram</h2>
+<div id="soc" style="margin-top:10px"></div>
+</div></section>
+
+<section class="band alt" id="share"><div class="wrap">
+<h2>Share link</h2>
+<p>The whole design fits in a link. Anyone who opens it gets your SoC on their Build page. Nothing is uploaded: the design travels inside the link itself.</p>
+<div class="code"><button type="button" data-copy="sl">Copy</button><pre id="sl" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre></div>
+</div></section>
+
+<section class="band" id="spec"><div class="wrap">
+<h2>Register spec</h2>
+<p>Every register in your SoC, with its full address. Print it or save it as PDF from the print dialog, or download it as a spreadsheet file.</p>
+<div class="chips" style="margin-bottom:12px"><button type="button" class="ex" id="pr">🖨 Print or save as PDF</button><button type="button" class="ex" id="csv">⬇ Download CSV</button></div>
+<div class="scroll"><table id="rt"></table></div>
+</div></section>
+
+<section class="band alt" id="rtl"><div class="wrap">
+<h2>RTL and testbench</h2>
+<p>Real SystemVerilog for the APB side of your SoC: the address package, both decoders, one register block per peripheral (with wait states, write-1-to-clear, the timer, watchdog and interrupt behaviour), and the APB subsystem that ties them together. The testbench reads back the reset values and write patterns of the registers it can check directly, and prints <code>TEST PASSED</code>. The AXI memories and interconnect stay in the browser model.</p>
+<p class="hint">Run it with any SystemVerilog simulator, for example: <code>verilator --binary --timing --top-module tb soc_rtl.sv soc_tb.sv</code></p>
+<div class="chips" style="margin-bottom:12px"><button type="button" class="ex" id="dr">⬇ Download soc_rtl.sv</button><button type="button" class="ex" id="dt">⬇ Download soc_tb.sv</button></div>
+<div class="code"><button type="button" data-copy="c1">Copy</button><pre id="c1" style="max-height:460px"></pre></div>
+<div class="code"><button type="button" data-copy="c2">Copy</button><pre id="c2" style="max-height:460px"></pre></div>
+</div></section>
+
+<section class="band" id="uvm"><div class="wrap">
+<h2>UVM register model</h2>
+<p>A <code>uvm_reg_block</code> per peripheral, mapped at its base address, plus a test that runs the built-in reset sequence. Write-only registers have no reset to read, and registers that hardware changes (counters, interrupt status, GPIO inputs) are marked volatile so the sequence skips them. Connect the map to your APB agent with an adapter and it checks every reset value through the bus.</p>
+<div class="chips" style="margin-bottom:12px"><button type="button" class="ex" id="du">⬇ Download soc_ral_pkg.sv</button></div>
+<div class="code"><button type="button" data-copy="c3">Copy</button><pre id="c3" style="max-height:460px"></pre></div>
+</div></section>
+
+<section class="band alt" id="save"><div class="wrap">
+<h2>Save and load</h2>
+<div class="demo">
+ <aside class="ctrl" aria-label="Save and load">
+  <div class="tryhd"><b>Try it</b><span>Your design as a JSON file</span></div>
+  <button type="button" class="act" id="dl">⬇ Download design file</button>
+  <div><label class="lab" for="up">Load a design file</label><input type="file" id="up" accept=".json,application/json"></div>
+  <button type="button" id="ld">Load the text on the right</button>
+  <p class="hint" id="sm" role="status" style="margin:0"></p>
+ </aside>
+ <div class="out"><label class="lab" for="js">Design as JSON</label><textarea id="js" rows="14" spellcheck="false" style="width:100%;box-sizing:border-box;font:13px 'JetBrains Mono',monospace;background:#0a1120;color:var(--ink);border:1.5px solid #34507f;border-radius:10px;padding:10px"></textarea></div>
+</div>
+</div></section>
+
+</main>
+<footer class="band" style="padding-top:8px"><div class="wrap">
+<p style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:none"><a href="regress.html">← 5 · Regression</a><a href="index.html">All pages</a><a href="index.html">Home →</a></p>
+<p>SoC Playground is a learning model: a small AXI and APB system simulated in your browser, close enough to real hardware to learn from, but not a real chip. Your design and badges are saved in this browser only.</p>
+</div></footer>
+<script src="assets/common.js"></script>
+<script src="assets/engine.js"></script>
+<script src="assets/extra.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+{
+const L = LAB, U = SOCUI, T = L.TYPES, $ = id => document.getElementById(id);
+let d = L.load();
+const file = (name, text, type) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type: type || 'text/plain'})); a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
+function render() {
+  U.designBanner($('ban'), d);
+  U.finalDiagram($('soc'), d);
+  $('sl').textContent = L.share.link('build.html', d);
+  const rows = []; for (const b of L.gen.apbBlocks(d)) for (const r of L.regsOf(b)) rows.push([b, r]);
+  $('rt').innerHTML = `<thead><tr><th scope="col">Block</th><th scope="col">Register</th><th scope="col">Address</th><th scope="col">Offset</th><th scope="col">Access</th><th scope="col">Reset</th><th scope="col">Description</th></tr></thead><tbody>${rows.map(([b, r]) => `<tr><td style="color:${T[b.t].c};font-weight:700">${U.esc(b.name)}</td><td class="mono">${U.esc(r.n)}</td><td class="mono">${L.HA(b.base + r.o)}</td><td class="mono">+0x${r.o.toString(16).toUpperCase().padStart(3, '0')}</td><td>${r.a}</td><td class="mono">${L.H(r.r)}</td><td>${U.esc(r.d)}</td></tr>`).join('') || '<tr><td colspan="7">No peripherals yet.</td></tr>'}</tbody>`;
+  $('c1').textContent = L.gen.rtl(d); $('c2').textContent = L.gen.tb(d); $('c3').textContent = L.gen.uvm(d);
+  $('js').value = JSON.stringify(d, null, 1);
+}
+$('pr').onclick = () => print();
+$('csv').onclick = () => file('soc_registers.csv', L.gen.csv(d), 'text/csv');
+$('dr').onclick = () => { file('soc_rtl.sv', L.gen.rtl(d)); L.progress.mark('export'); };
+$('dt').onclick = () => { file('soc_tb.sv', L.gen.tb(d)); L.progress.mark('export'); };
+$('du').onclick = () => { file('soc_ral_pkg.sv', L.gen.uvm(d)); L.progress.mark('export'); };
+document.addEventListener('click', e => { const b = e.target.closest('[data-copy]'); if (b && /c[123]/.test(b.dataset.copy)) L.progress.mark('export'); });
+const msg = m => $('sm').textContent = m;
+function loadText(t) { try { d = L.sanitize(JSON.parse(t)); L.save(d); render(); msg(`Loaded a design with ${d.blocks.length} blocks. The other pages now use it.`); } catch (e) { msg('Could not load: ' + e.message + '.'); } }
+$('dl').onclick = () => { file('my-soc.json', JSON.stringify(d, null, 1), 'application/json'); msg('Saved my-soc.json.'); };
+$('up').onchange = e => { const f = e.target.files[0]; if (f) f.text().then(loadText); };
+$('ld').onclick = () => loadText($('js').value);
+render();
+}
+</script>
+
+</body>
+</html>

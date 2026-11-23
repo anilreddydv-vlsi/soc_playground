@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="SoC Playground: drag and drop your own AXI and APB system on chip, run software on it, verify it with a testbench you build, earn badges and export real SystemVerilog. For design verification starters.">
+<title>SoC Playground</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23060a14%27/%3E%3Cpath d=%27M4 12h5v-6h5v6h5v-6h5v6h4M4 24h9l2-5h13%27 stroke=%27%2322d3ee%27 stroke-width=%272.5%27 fill=%27none%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+<style>
+:root{--bg:#060a14;--t:#e7eef9;--m:#8fa2c2;--a:#22d3ee;color-scheme:dark}
+html,body{height:100%;margin:0;background:var(--bg);overflow:hidden;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+svg{width:100vw;height:100vh;display:block}
+.fade{opacity:0;animation:fi 1s ease forwards}
+@keyframes fi{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.chip{cursor:pointer}
+.chip rect{transition:fill .2s}
+.chip:hover rect,.chip:focus rect{fill:#1a2b4d}
+.chip:focus{outline:none}
+.chip:focus-visible rect{stroke-width:4}
+.btn{position:fixed;right:16px;bottom:14px;background:#0c1424cc;color:var(--m);border:1px solid #2a3b5e;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;font-family:inherit}
+.btn:hover{color:#fff;border-color:var(--a)}
+.mlinks{display:none}
+@media (max-aspect-ratio:1/1){
+ .wrap{bottom:auto;height:62vw}
+ svg{height:62vw}
+ .mlinks{display:grid;position:fixed;left:0;right:0;bottom:0;top:62vw;overflow:auto;padding:12px 16px 64px;gap:8px;align-content:start}
+ .mlinks p{margin:0 0 4px;color:var(--m);font-size:13px;font-weight:700;letter-spacing:.08em}
+ .mlinks a{display:flex;align-items:center;gap:12px;min-height:50px;padding:0 14px;border-radius:12px;background:#0f1b30;border:2px solid var(--k);color:var(--t);text-decoration:none;font-weight:700;font-size:16px}
+ .mlinks a span{color:var(--m);font-weight:500;font-size:13px;margin-left:auto;text-align:right}
+}
+@media (prefers-reduced-motion:reduce){.fade{animation:none;opacity:1}}
+</style>
+</head>
+<body>
+<div class="wrap"><svg id="sv" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img" aria-label="SoC Playground title"></svg></div>
+<nav class="mlinks" id="ml" aria-label="Series pages"></nav>
+<button class="btn" id="rp" type="button">↻ Replay</button>
+<script>
+{
+const NS = 'http://www.w3.org/2000/svg', sv = document.getElementById('sv');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function E(t, a, p, txt) { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; (p || sv).appendChild(e); return e; }
+const PAGES = [
+ {n: 'Missions', h: 'missions.html', c: '#fbbf24', d: 'Start here: goals and badges'},
+ {n: 'Build', h: 'build.html', c: '#22d3ee', d: 'Drag and drop your SoC'},
+ {n: 'Run', h: 'run.html', c: '#a78bfa', d: 'Transfers, interrupts, out-of-order'},
+ {n: 'Verify', h: 'verify.html', c: '#34d399', d: 'Testbench, sequences, assertions'},
+ {n: 'Regression', h: 'regress.html', c: '#fb923c', d: 'Every bug against every test'},
+ {n: 'Export', h: 'export.html', c: '#f472b6', d: 'RTL, testbench, UVM, share link'}
+];
+document.getElementById('ml').innerHTML = '<p>OPEN A TOPIC</p>' + PAGES.map((p, i) => `<a href="${p.h}" style="--k:${p.c}">${i + 1}. ${p.n}<span>${p.d}</span></a>`).join('');
+
+const TX = [['WRITE', 0x00000010, 'ram', 'OKAY'], ['READ', 0x20000040, 'uart', 'OKAY', 'DMA READ ×8'], ['WRITE', 0x40000008, 'gpio', 'OKAY'], ['READ', 0x10000000, 'timer', 'OKAY'], ['READ', 0x90000000, 'none', 'DECERR'], ['WRITE', 0x40001004, 'gpio', 'OKAY'], ['WRITE', 0x00000100, 'ram', 'OKAY', 'DMA WRITE ×8'], ['WRITE', 0x10000000, 'timer', 'SLVERR']];
+const SLV = {ram: [440, '#22d3ee', 'SRAM'], timer: [625, '#38bdf8', 'BOOT ROM'], uart: [810, '#2dd4bf', 'DDR'], gpio: [995, '#a78bfa', 'APB BRIDGE'], none: [1180, '#f87171', 'DEFAULT']};
+const SUB = {ram: '0x0000_0000', timer: '0x1000_0000', uart: '0x2000_0000', gpio: 'UART GPIO TIMER…', none: 'DECERR'};
+const BUSY = 690, SLY = 770;
+let anim = {}, done = 0, t0 = performance.now();
+const hx = v => '0x' + (v >>> 0).toString(16).toUpperCase().padStart(8, '0').replace(/^(....)/, '$1_');
+function build() {
+  while (sv.firstChild) sv.removeChild(sv.firstChild); t0 = performance.now();
+  const d = E('defs', {});
+  const g1 = E('linearGradient', {id: 'gt', x1: 0, x2: 1}, d); [['0', '#22d3ee'], ['.5', '#a78bfa'], ['1', '#fbbf24']].forEach(([o, c]) => E('stop', {offset: o, 'stop-color': c}, g1));
+  const rg = E('radialGradient', {id: 'glow', cx: .5, cy: .45, r: .6}, d); E('stop', {offset: 0, 'stop-color': '#12305a', 'stop-opacity': .9}, rg); E('stop', {offset: 1, 'stop-color': '#060a14', 'stop-opacity': 0}, rg);
+  E('rect', {x: 0, y: 0, width: 1600, height: 900, fill: '#060a14'}); E('rect', {x: 0, y: 0, width: 1600, height: 900, fill: 'url(#glow)'});
+  const gg = E('g', {opacity: .12}); for (let x = 0; x <= 1600; x += 50) E('line', {x1: x, y1: 0, x2: x, y2: 900, stroke: '#3b82f6', 'stroke-width': .6}, gg); for (let y = 0; y <= 900; y += 50) E('line', {x1: 0, y1: y, x2: 1600, y2: y, stroke: '#3b82f6', 'stroke-width': .6}, gg);
+  // APB bus, slaves and a travelling transfer
+  const bus = E('g', {class: 'fade', style: 'animation-delay:1.8s'});
+  E('line', {x1: 240, y1: BUSY, x2: 1360, y2: BUSY, stroke: '#34507f', 'stroke-width': 10, 'stroke-linecap': 'round'}, bus);
+  E('text', {x: 260, y: BUSY - 16, fill: '#8fa2c2', 'font-size': 14, 'font-weight': 700, 'font-family': 'ui-monospace,Menlo,monospace'}, bus, 'AXI INTERCONNECT  ·  AW  W  B  AR  R  ·  ARBITER + DECODER');
+  anim.slaves = {};
+  for (const [k, [x, c, n]] of Object.entries(SLV)) {
+    E('line', {x1: x, y1: BUSY, x2: x, y2: SLY, stroke: '#34507f', 'stroke-width': 4}, bus);
+    const g = E('g', {}, bus);
+    const r = E('rect', {x: x - 78, y: SLY, width: 156, height: 64, rx: 12, fill: '#0c1424', stroke: c, 'stroke-width': 2.5}, g);
+    E('text', {x, y: SLY + 28, 'text-anchor': 'middle', fill: c, 'font-size': 18, 'font-weight': 900}, g, n);
+    E('text', {x, y: SLY + 50, 'text-anchor': 'middle', fill: '#8fa2c2', 'font-size': 12, 'font-weight': 600, 'font-family': 'ui-monospace,Menlo,monospace'}, g, SUB[k]);
+    anim.slaves[k] = r;
+  }
+  anim.pk = E('g', {}, bus); anim.pr = E('rect', {x: 0, y: -15, width: 220, height: 30, rx: 15, fill: '#22d3ee'}, anim.pk); anim.pt = E('text', {x: 110, y: 5, 'text-anchor': 'middle', fill: '#060a14', 'font-size': 13, 'font-weight': 800, 'font-family': 'ui-monospace,Menlo,monospace'}, anim.pk, '');
+  // devices
+  const dev = (x, c, a, b, ic, tag) => { const g = E('g', {class: 'fade', style: 'animation-delay:2s'}); E('rect', {x, y: 630, width: 220, height: 220, rx: 18, fill: c, opacity: .95}, g); E('rect', {x: x + 6, y: 636, width: 208, height: 208, rx: 14, fill: 'none', stroke: '#ffffff30', 'stroke-width': 1.5}, g);
+    ic(g, x + 110, 682); E('text', {x: x + 110, y: 760, 'text-anchor': 'middle', fill: '#fff', 'font-size': 24, 'font-weight': 800}, g, a); E('text', {x: x + 110, y: 788, 'text-anchor': 'middle', fill: '#e2e8f0', 'font-size': 15, 'font-weight': 600}, g, b);
+    E('text', {x: x + 110, y: 822, 'text-anchor': 'middle', fill: '#ffffffb0', 'font-size': 12, 'font-weight': 700, 'letter-spacing': 1.5}, g, tag); };
+  const cpu = (g, cx, cy) => { cy += 4; const s2 = 29;
+    for (let k = 0; k < 6; k++) { const o = -s2 + 8 + k * (2 * s2 - 16) / 5; [[cx + o, cy - s2 - 10, cx + o, cy - s2], [cx + o, cy + s2, cx + o, cy + s2 + 10], [cx - s2 - 10, cy + o, cx - s2, cy + o], [cx + s2, cy + o, cx + s2 + 10, cy + o]].forEach(([a, b, c, d2]) => E('line', {x1: a, y1: b, x2: c, y2: d2, stroke: '#c7d2fe', 'stroke-width': 3, 'stroke-linecap': 'round'}, g)); }
+    E('rect', {x: cx - s2, y: cy - s2, width: 2 * s2, height: 2 * s2, rx: 7, fill: '#1e1b4b', stroke: '#c7d2fe', 'stroke-width': 2.5}, g); E('rect', {x: cx - 20, y: cy - 20, width: 40, height: 40, rx: 4, fill: '#312e81', stroke: '#a5b4fc', 'stroke-width': 1.5}, g);
+    E('text', {x: cx, y: cy + 6, 'text-anchor': 'middle', fill: '#e0e7ff', 'font-size': 14, 'font-weight': 900}, g, 'MCU'); };
+  const check = (g, cx, cy) => { E('circle', {cx, cy, r: 30, fill: '#064e3b', stroke: '#6ee7b7', 'stroke-width': 3}, g); E('path', {d: `M${cx - 14},${cy} l9,10 l19,-21`, fill: 'none', stroke: '#d1fae5', 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}, g); };
+  dev(20, '#4338ca', 'CPU + DMA', 'AXI masters', cpu, 'START EVERY TRANSFER');
+  dev(1360, '#047857', 'Testbench', 'Scoreboard + coverage', check, 'CHECKS EVERY TRANSFER');
+  anim.cnt = E('text', {x: 1470, y: 866, 'text-anchor': 'middle', fill: '#a7f3d0', 'font-size': 14, 'font-weight': 800, class: 'fade', style: 'animation-delay:2s'}, null, '');
+  // title block
+  const tb = E('g', {});
+  E('text', {x: 800, y: 212, 'text-anchor': 'middle', fill: '#8fa2c2', 'font-size': 22, 'font-weight': 700, 'letter-spacing': 8, class: 'fade', style: 'animation-delay:.3s'}, tb, 'FOR DV STARTERS');
+  E('text', {x: 800, y: 340, 'text-anchor': 'middle', fill: 'url(#gt)', 'font-size': 112, 'font-weight': 900, 'letter-spacing': -1, class: 'fade', style: 'animation-delay:.5s'}, tb, 'SoC Playground');
+  E('text', {x: 800, y: 394, 'text-anchor': 'middle', fill: '#e7eef9', 'font-size': 30, 'font-weight': 600, class: 'fade', style: 'animation-delay:.9s'}, tb, 'Drag, Drop and Build Your Own SoC, Then Verify It');
+  const nb = E('g', {class: 'fade', style: 'animation-delay:1.4s'}, tb);
+  E('rect', {x: 520, y: 418, width: 560, height: 112, rx: 18, fill: '#0c1628', stroke: 'url(#gt)', 'stroke-width': 2.5}, nb);
+  E('text', {x: 800, y: 452, 'text-anchor': 'middle', fill: '#8fa2c2', 'font-size': 16, 'font-weight': 700, 'letter-spacing': 4}, nb, 'PRESENTED BY');
+  E('text', {x: 800, y: 494, 'text-anchor': 'middle', fill: '#ffffff', 'font-size': 38, 'font-weight': 800}, nb, 'Anil Reddy Tatigotla');
+  E('text', {x: 800, y: 518, 'text-anchor': 'middle', fill: '#22d3ee', 'font-size': 15, 'font-weight': 700}, nb, 'Design Verification Engineer');
+  const cw = PAGES.map(p => (p.n.length + 3) * 10.5 + 40), gap = 14; let x = 800 - (cw.reduce((s, w) => s + w, 0) + gap * (PAGES.length - 1)) / 2;
+  PAGES.forEach((p, i) => { const w = cw[i];
+    const a = E('a', {href: p.h, class: 'chip fade', style: `animation-delay:${2.6 + i * .18}s`, tabindex: 0, 'aria-label': `Open page ${i + 1}: ${p.n}`});
+    E('title', {}, a, `${p.n}: ${p.d}`);
+    E('rect', {x, y: 552, width: w, height: 44, rx: 22, fill: '#0f1b30', stroke: p.c, 'stroke-width': 2}, a);
+    E('text', {x: x + w / 2, y: 580, 'text-anchor': 'middle', fill: '#e7eef9', 'font-size': 17, 'font-weight': 700}, a, (i + 1) + '. ' + p.n);
+    x += w + gap; });
+  E('text', {x: 800, y: 618, 'text-anchor': 'middle', fill: '#5b6b88', 'font-size': 14, 'font-weight': 600, class: 'fade', style: 'animation-delay:3.6s'}, null, '12 missions · 12 badges · real SystemVerilog and UVM export · click a topic to start');
+}
+function loop(now) {
+  const T = 2.4, t = reduce ? 0.3 * T : Math.max(0, (now - t0) / 1000) % (TX.length * T), k = Math.floor(t / T), f = (t % T) / T;
+  const [op, a, sl, resp, lab0] = TX[k], [sx, sc] = SLV[sl];
+  if (anim.pk) {
+    let x, y, label, col;
+    if (f < 0.42) { x = 250 + (sx - 360 - 250) * (f / 0.42) ; y = BUSY; label = lab0 || `${op} ${hx(a)}`; col = lab0 ? '#c084fc' : '#22d3ee'; }
+    else if (f < 0.58) { x = sx - 110; y = BUSY; label = lab0 || `${op} ${hx(a)}`; col = lab0 ? '#c084fc' : '#22d3ee'; }
+    else { x = sx - 110 - (sx - 110 - 250) * ((f - 0.58) / 0.42); y = BUSY; label = resp; col = resp === 'OKAY' ? '#34d399' : '#f87171'; }
+    anim.pk.setAttribute('transform', `translate(${x.toFixed(1)},${y})`);
+    anim.pr.setAttribute('fill', col); anim.pr.setAttribute('width', label.length > 6 ? 220 : 90); anim.pt.setAttribute('x', label.length > 6 ? 110 : 45); anim.pt.textContent = label;
+    for (const [kk, r] of Object.entries(anim.slaves)) { const on = kk === sl && f >= 0.38 && f < 0.66; r.setAttribute('fill', on ? sc + '33' : '#0c1424'); r.setAttribute('stroke-width', on ? 5 : 2.5); }
+    const n = Math.max(0, Math.floor((now - t0) / 1000 / T));
+    anim.cnt.textContent = `${n} checked · ${Math.min(100, 20 + n * 9)} % coverage`;
+  }
+  if (!reduce) requestAnimationFrame(loop);
+}
+document.getElementById('rp').onclick = () => { build(); if (reduce) loop(performance.now()); };
+build(); requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>

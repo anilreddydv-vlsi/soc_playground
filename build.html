@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Drag and drop CPU, DMA, memories, an AXI to APB bridge and peripherals to build your own system on chip, with live checks and a final block diagram.">
+<title>Build Your SoC</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23060a14%27/%3E%3Crect x=%279%27 y=%279%27 width=%2714%27 height=%2714%27 rx=%272%27 fill=%27none%27 stroke=%27%2322d3ee%27 stroke-width=%272.5%27/%3E%3Cpath d=%27M13 5v4M19 5v4M13 23v4M19 23v4M5 13h4M5 19h4M23 13h4M23 19h4%27 stroke=%27%2322d3ee%27 stroke-width=%272%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;600;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/series.css">
+<style>
+.pgroup{display:grid;gap:6px}
+#msg{min-height:22px;margin:0;font-size:14px;color:#fde68a}
+</style>
+</head>
+<body>
+<nav class="series" aria-label="SoC Playground pages"><a class="home" href="index.html">SoC Playground home</a><a href="missions.html">1 · Missions</a><a href="build.html" aria-current="page">2 · Build</a><a href="run.html">3 · Run</a><a href="verify.html">4 · Verify</a><a href="regress.html">5 · Regression</a><a href="export.html">6 · Export</a></nav>
+<header class="band" style="padding-bottom:12px"><div class="wrap">
+<h1>Build your own SoC</h1>
+<p class="lede">Drag blocks from the left onto your chip. CPU and DMA are masters on the AXI interconnect; memories sit on AXI; slow peripherals sit on an APB bus behind a bridge. The address map and the design checks update as you build. Tap a block on the chip to change its settings.</p>
+<nav class="toc" aria-label="On this page"><a href="#lab">Build it</a><a href="#final">Final diagram</a><a href="#myquiz">Quiz on your SoC</a><a href="#blocks">What each block does</a><a href="#map">Address map</a><a href="#quiz">Quiz</a></nav>
+<div class="key"><b>Colour key:</b><span><i class="k5"></i>Drag onto the SoC (or tap to add)</span><span><i class="k2"></i>Option you can pick</span><span><i class="k2s"></i>Option selected</span><span><i class="k3"></i>Load an example</span><span><i class="k4"></i>Jump to a section</span></div>
+</div></header>
+<main>
+<section class="band" id="lab" style="padding-top:8px"><div class="wrap">
+<div class="demo">
+ <aside class="ctrl" aria-label="Block palette">
+  <div class="tryhd"><b>Try it</b><span>Drag a block onto the chip, or tap it to add</span></div>
+  <button type="button" id="tourb">🧭 Take the 1-minute tour</button>
+  <div><span class="lab">Start from</span><div class="stack" id="presets">
+   <button type="button" class="ex" data-p="starter">Starter: CPU, SRAM, UART, GPIO, timer</button>
+   <button type="button" class="ex" data-p="full">Full: two masters, three memories, six peripherals</button>
+   <button type="button" class="ex" data-p="empty">Empty chip: build it all yourself</button>
+  </div></div>
+  <div class="pal" id="pal"></div>
+  <div><span class="lab">Arbiter (when CPU and DMA both ask)</span><div class="seg" id="arb"><button type="button" class="opt" data-v="rr">Round robin<small>take turns</small></button><button type="button" class="opt" data-v="fixed">Fixed<small>CPU always first</small></button></div></div>
+ </aside>
+ <div class="out">
+  <p id="msg" role="status" aria-live="polite"></p>
+  <div id="soc"></div>
+  <div class="two">
+   <div class="card props" id="props" aria-live="polite"></div>
+   <div><h3>Design checks</h3><div class="chk" id="chk"></div><p class="hint" style="margin-top:10px">Your design is saved in this browser. The Run, Verify and Export pages use it.</p>
+    <p style="display:flex;gap:10px;flex-wrap:wrap"><a href="run.html">Run it →</a><a href="verify.html">Verify it →</a></p></div>
+  </div>
+ </div>
+</div>
+<div class="trash" data-zone="trash" id="trash">🗑 Drop here to remove</div>
+</div></section>
+
+<section class="band alt" id="final"><div class="wrap">
+<h2>Final block diagram</h2>
+<p>This drawing updates with every change you make: masters on top, the AXI interconnect, memories and the bridge, then the APB bus and its peripherals, with every address range. Download it for your notes or slides.</p>
+<div id="fd"></div>
+</div></section>
+
+<section class="band" id="myquiz"><div class="wrap">
+<h2>Quiz on your SoC</h2>
+<p>These questions are made from the SoC you built, so they change when your design changes.</p>
+<button type="button" class="ex" id="nq">↻ New questions</button>
+<div class="quiz" id="dq" style="margin-top:14px"></div>
+</div></section>
+
+<section class="band alt" id="blocks"><div class="wrap">
+<h2>What each block does</h2>
+<p>A system on chip is a set of blocks joined by buses. <b>Masters</b> start transfers; <b>slaves</b> answer them. AXI is the fast bus: it has separate read and write channels and supports bursts. APB is the simple bus for slow register blocks. The bridge turns one AXI transfer into one APB transfer.</p>
+<div class="cards" id="cat"></div>
+</div></section>
+
+<section class="band" id="map"><div class="wrap">
+<h2>Address map</h2>
+<p>Every slave owns a window of addresses. The interconnect decoder looks at the address and picks one slave. An address that no slave owns gets an error response: <code>DECERR</code> from the interconnect, or <code>SLVERR</code> from the bridge when the address is inside the APB window but no peripheral is there.</p>
+<div class="scroll"><table id="mt"></table></div>
+</div></section>
+
+<section class="band alt" id="quiz"><div class="wrap">
+<h2>Quiz</h2>
+<div class="quiz" id="qz"></div>
+</div></section>
+
+</main>
+<footer class="band" style="padding-top:8px"><div class="wrap">
+<p style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:none"><a href="missions.html">← 1 · Missions</a><a href="index.html">All pages</a><a href="run.html">3 · Run →</a></p>
+<p>SoC Playground is a learning model: a small AXI and APB system simulated in your browser, close enough to real hardware to learn from, but not a real chip. Your design and badges are saved in this browser only.</p>
+</div></footer>
+<script src="assets/common.js"></script>
+<script src="assets/engine.js"></script>
+<script src="assets/extra.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+{
+const L = LAB, U = SOCUI, T = L.TYPES, $ = id => document.getElementById(id);
+let d = L.load(), sel = null;
+const msg = (m, bad) => { $('msg').textContent = m; $('msg').style.color = bad ? '#fca5a5' : '#fde68a'; };
+const groups = [['master', 'Masters'], ['mem', 'Memories'], ['bridge', 'Bridge'], ['per', 'Peripherals']];
+function palette() {
+  $('pal').innerHTML = groups.map(([k, n]) => `<div class="pgroup"><h3>${n}</h3><div class="pgrid">${Object.entries(T).filter(([, t]) => t.k === k).map(([id, t]) => {
+    const why = L.canAdd(d, id), c = d.blocks.filter(b => b.t === id).length;
+    return `<div class="pi" role="button" tabindex="0" data-t="${id}" style="--c:${t.c}" aria-disabled="${!!why}" title="${U.esc(why || t.d)}" aria-label="Add ${t.n}${why ? ' (' + why + ')' : ''}"><span class="cnt">${c}/${t.max}</span>${t.n}<small>${t.d.split('.')[0]}</small></div>`;
+  }).join('')}</div></div>`).join('');
+  for (const el of $('pal').querySelectorAll('.pi')) U.make(el, {data: el.dataset.t,
+    accept: (z, t) => z.dataset.zone === U.zoneKind(t),
+    drop: (z, t) => addBlock(t),
+    reject: (z, t) => msg(z.dataset.zone === 'trash' ? '' : `${T[t].n} does not go there. It belongs in “${{master: 'Masters', mem: 'AXI slaves', per: 'APB peripherals'}[U.zoneKind(t)]}”.`, true),
+    click: t => addBlock(t)});
+}
+function addBlock(t) {
+  const why = L.canAdd(d, t); if (why) { msg(why, true); return; }
+  const b = L.add(d, t); sel = b.id; msg(`Added ${b.name}${b.base != null && b.t !== 'bridge' ? ' at ' + L.HA(b.base) : ''}.`); render();
+}
+function render() {
+  L.save(d);
+  const c = L.checks(d), err = new Set(c.filter(x => x.lvl === 'err' && x.id).map(x => x.id));
+  U.diagram($('soc'), d, {edit: true, sel, err});
+  for (const el of $('soc').querySelectorAll('.pb[data-id]')) U.make(el, {data: el.dataset.id, placed: true,
+    accept: z => z.dataset.zone === 'trash', drop: (z, id) => { const b = d.blocks.find(x => x.id === id); L.remove(d, id); if (sel === id) sel = null; msg(`Removed ${b.name}.`); render(); },
+    click: id => { sel = id; render(); }});
+  $('chk').innerHTML = c.length ? c.map(x => `<div class="${x.lvl}">${x.lvl === 'err' ? '✕' : '!'} ${U.esc(x.msg)}</div>`).join('') : '<div class="good">✓ No problems. Every block is reachable and no windows overlap.</div>';
+  for (const b of $('arb').children) b.setAttribute('aria-pressed', b.dataset.v === d.arb);
+  palette(); props(); mapTable(); U.finalDiagram($('fd'), d);
+  const has = t => d.blocks.some(b => b.t === t);
+  if (!c.some(x => x.lvl === 'err') && has('cpu') && has('bridge') && d.blocks.some(b => T[b.t].k === 'mem') && d.blocks.some(b => T[b.t].k === 'per')) L.progress.mark('build-ok');
+}
+const parseHex = s => { const v = parseInt(String(s).replace(/_/g, '').replace(/^0x/i, ''), 16); return Number.isFinite(v) && v >= 0 && v <= 0xFFFFFFFF ? v >>> 0 : null; };
+function props() {
+  const b = d.blocks.find(x => x.id === sel);
+  if (!b) { $('props').innerHTML = '<h3>Block settings</h3><p class="hint">Tap a block on the chip to see and change its settings. Drag a block from the chip to the bin at the bottom of the screen to remove it.</p>'; return; }
+  const t = T[b.t]; let h = `<h3 style="color:${t.c}">${U.esc(b.name)}</h3><p class="hint" style="margin:0">${t.d}</p>`;
+  h += `<div class="row2"><div><label class="lab" for="pn">Name</label><input type="text" id="pn" value="${U.esc(b.name)}" maxlength="20" style="text-align:left"></div>`;
+  if (b.base != null) h += `<div><label class="lab" for="pa">Base address${b.t === 'bridge' ? ' <small>fixed</small>' : ''}</label><input type="text" id="pa" value="${L.HA(b.base)}" ${b.t === 'bridge' ? 'disabled' : ''}></div>`;
+  h += '</div>';
+  for (const [k, vals] of Object.entries(t.p || {})) h += `<div><span class="lab">${{size: 'Size', wait: 'Wait states per transfer', lat: 'Read latency (cycles)'}[k]}</span><div class="seg" data-k="${k}">${vals.map(v => `<button type="button" class="opt" data-v="${v}" aria-pressed="${b.p[k] === v}">${k === 'size' ? L.KB(v) : v}</button>`).join('')}</div></div>`;
+  if (t.k === 'mem' || t.k === 'per') h += `<div><span class="lab">Power</span><div class="seg" id="pw"><button type="button" class="opt" data-v="on" aria-pressed="${!b.p.off}">On</button><button type="button" class="opt" data-v="off" aria-pressed="${!!b.p.off}">Clock-gated (off)<small>accesses get SLVERR</small></button></div></div>`;
+  const regs = L.regsOf(b);
+  if (b.t === 'custom') {
+    h += `<div><span class="lab">Registers <small>offset · name · access · reset</small></span><div class="scroll"><table class="regt"><tbody>${regs.map((r, i) => `<tr data-i="${i}"><td><input type="text" data-f="o" value="0x${r.o.toString(16).toUpperCase().padStart(3, '0')}" aria-label="Offset" style="width:70px"></td><td><input type="text" data-f="n" value="${U.esc(r.n)}" aria-label="Name" maxlength="10" style="width:80px"></td><td><select data-f="a" aria-label="Access">${['RW', 'RO', 'WO', 'W1C'].map(a => `<option${a === r.a ? ' selected' : ''}>${a}</option>`).join('')}</select></td><td><input type="text" data-f="r" value="${L.H(r.r)}" aria-label="Reset value" style="width:110px"></td><td><button type="button" class="del" data-del="${i}" aria-label="Delete register ${U.esc(r.n)}" style="min-height:36px;padding:0 10px">✕</button></td></tr>`).join('')}</tbody></table></div>
+      <button type="button" id="addr" style="margin-top:8px">+ Add a register</button></div>`;
+  } else if (regs.length) h += `<div class="scroll"><table><thead><tr><th scope="col">Offset</th><th scope="col">Register</th><th scope="col">Access</th><th scope="col">Reset</th><th scope="col">What it does</th></tr></thead><tbody>${regs.map(r => `<tr><td class="mono">+0x${r.o.toString(16).toUpperCase().padStart(3, '0')}</td><td class="mono">${r.n}</td><td>${r.a}</td><td class="mono">${L.H(r.r, r.m > 0xFFFF ? 8 : 4)}</td><td>${r.d}</td></tr>`).join('')}</tbody></table></div>`;
+  h += `<button type="button" class="del" id="rm">✕ Remove ${U.esc(b.name)}</button>`;
+  $('props').innerHTML = h;
+  $('pn').onchange = e => { b.name = e.target.value.trim() || t.n; render(); };
+  if ($('pa')) $('pa').onchange = e => { const v = parseHex(e.target.value); if (v == null) { msg('Type a hex address such as 0x4000_3000.', true); e.target.value = L.HA(b.base); return; } b.base = v; msg(`${b.name} moved to ${L.HA(v)}.`); render(); };
+  for (const s of $('props').querySelectorAll('.seg[data-k]')) s.onclick = e => { const o = e.target.closest('.opt'); if (!o) return; b.p[s.dataset.k] = +o.dataset.v; render(); };
+  if ($('pw')) $('pw').onclick = e => { const o = e.target.closest('.opt'); if (!o) return; b.p.off = o.dataset.v === 'off'; msg(b.p.off ? `${b.name} is now clock-gated: it saves power, but any access returns SLVERR.` : `${b.name} is powered on.`); render(); };
+  $('rm').onclick = () => { L.remove(d, b.id); msg(`Removed ${b.name}.`); sel = null; render(); };
+  if (b.t === 'custom') {
+    for (const inp of $('props').querySelectorAll('.regt [data-f]')) inp.onchange = e => {
+      const r = b.regs[+e.target.closest('tr').dataset.i], f = e.target.dataset.f, v = e.target.value;
+      if (f === 'n') r.n = (v.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '') || 'REG').slice(0, 10);
+      else if (f === 'a') r.a = v;
+      else { const x = parseHex(v); if (x == null || (f === 'o' && (x % 4 || x > 0xFFC))) { msg(f === 'o' ? 'Offsets are multiples of 4 from 0x000 to 0xFFC.' : 'Type a hex value.', true); render(); return; } r[f] = x; }
+      render();
+    };
+    for (const x of $('props').querySelectorAll('[data-del]')) x.onclick = () => { b.regs.splice(+x.dataset.del, 1); render(); };
+    $('addr').onclick = () => { const used = new Set(b.regs.map(r => r.o)); let o = 0; while (used.has(o)) o += 4; if (o > 0xFFC || b.regs.length >= 16) { msg('At most 16 registers.', true); return; } b.regs.push({o, n: 'REG' + b.regs.length, a: 'RW', r: 0, m: 0xFFFFFFFF, d: 'your register'}); render(); };
+  }
+}
+function mapTable() {
+  const w = L.windows(d).sort((a, b) => a.base - b.base);
+  $('mt').innerHTML = `<thead><tr><th scope="col">Block</th><th scope="col">Bus</th><th scope="col">Start</th><th scope="col">End</th><th scope="col">Size</th><th scope="col">Contents</th></tr></thead><tbody>${w.map(x => `<tr><td style="color:${T[x.b.t].c};font-weight:700">${U.esc(x.b.name)}</td><td>${x.side === 'axi' ? 'AXI' : 'APB'}</td><td class="mono">${L.HA(x.base)}</td><td class="mono">${L.HA(x.end)}</td><td>${L.KB(x.end - x.base + 1)}</td><td>${T[x.b.t].k === 'mem' ? 'memory words' : x.b.t === 'bridge' ? 'all APB peripherals' : L.regsOf(x.b).map(r => r.n).join(', ')}</td></tr>`).join('') || '<tr><td colspan="6">No slaves yet.</td></tr>'}</tbody>`;
+}
+$('presets').onclick = e => { const b = e.target.closest('[data-p]'); if (!b) return; d = L.newDesign(b.dataset.p); sel = null; msg(`Loaded the ${b.dataset.p} design.`); render(); };
+$('arb').onclick = e => { const b = e.target.closest('.opt'); if (!b) return; d.arb = b.dataset.v; render(); };
+$('cat').innerHTML = Object.values(T).map(t => `<div class="card" style="border-color:color-mix(in srgb,${t.c} 40%,#1f2c47)"><h3 style="color:${t.c}">${t.n}</h3><p>${t.d}.</p><p class="hint">${{master: 'Master on AXI', mem: 'Slave on AXI', bridge: 'Slave on AXI, master on APB', per: 'Slave on APB'}[t.k]}${t.max > 1 ? ` · up to ${t.max}` : ''}</p></div>`).join('');
+render();
+/* questions generated from the design */
+function designQuiz() {
+  const pick = a => a[Math.floor(Math.random() * a.length)], shuf = a => a.map(x => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map(x => x[1]);
+  const pers = d.blocks.filter(b => T[b.t].k === 'per' && L.regsOf(b).length), mems = d.blocks.filter(b => T[b.t].k === 'mem'), Q = [];
+  const mk = (q, right, wrong, exp) => { const o = shuf([right, ...wrong.filter((w, i, a) => w !== right && a.indexOf(w) === i).slice(0, 2)]); Q.push([q, o, o.indexOf(right), exp]); };
+  if (pers.length) { const b = pick(pers), r = pick(L.regsOf(b)), a = b.base + r.o; mk(`What is the address of <code>${U.esc(b.name)}.${r.n}</code>?`, L.HA(a), [L.HA(a + 4), L.HA(b.base + 0x1000 + r.o), L.HA(r.o)], `Base ${L.HA(b.base)} plus offset 0x${r.o.toString(16).toUpperCase()} gives ${L.HA(a)}.`); }
+  if (mems.length) { const m = pick(mems), last = m.base + m.p.size - 4; mk(`What is the address of the last 32-bit word of <code>${U.esc(m.name)}</code>?`, L.HA(last), [L.HA(m.base + m.p.size), L.HA(last - 0x1000), L.HA(m.base + m.p.size - 1)], `${L.KB(m.p.size)} from ${L.HA(m.base)} ends at ${L.HA(m.base + m.p.size - 1)}; the last word starts 4 bytes before the end.`); }
+  const free = [0x60000000, 0x80000000, 0xF0000000].find(a => !L.windows(d).some(w => w.side === 'axi' && a >= w.base && a <= w.end));
+  if (free != null) mk(`The CPU reads <code>${L.HA(free)}</code>. What response comes back?`, 'DECERR', ['OKAY', 'SLVERR'], 'No window owns that address, so the default slave answers DECERR.');
+  if (pers.length) { const b = pick(pers); mk(`How many APB wait states does <code>${U.esc(b.name)}</code> add?`, String(L.waitOf(b)), ['0', '1', '2', '3'].filter(x => x !== String(L.waitOf(b))), `${b.name} holds PREADY low for ${L.waitOf(b)} access cycle${L.waitOf(b) === 1 ? '' : 's'}.`); }
+  if (d.blocks.some(b => b.t === 'bridge')) { const hole = [...Array(16).keys()].map(i => L.BRIDGE_BASE + i * 0x1000).reverse().find(a => !d.blocks.some(b => b.base === a && b.t !== 'bridge')); if (hole != null) mk(`The CPU writes <code>${L.HA(hole)}</code>, inside the bridge window but in an empty slot. What happens?`, 'SLVERR from the bridge', ['DECERR from the interconnect', 'OKAY, the write is ignored'], 'The interconnect sends it to the bridge, but no peripheral is selected there, so the bridge answers SLVERR.'); }
+  const all = d.blocks.filter(b => b.base != null && b.t !== 'bridge' && b.t !== 'dma');
+  if (all.length >= 2) { const b = pick(all), a = b.base + 8; mk(`Which block answers address <code>${L.HA(a)}</code>?`, b.name, all.filter(x => x !== b).map(x => x.name), `${L.HA(a)} is inside ${b.name}'s window, which starts at ${L.HA(b.base)}.`); }
+  $('dq').innerHTML = ''; if (Q.length) UI.quiz($('dq'), Q.slice(0, 4)); else $('dq').innerHTML = '<p class="hint">Add some blocks first.</p>';
+}
+$('nq').onclick = designQuiz; designQuiz();
+const TOUR = [['#presets', 'Start from a preset', 'Pick Starter, Full or an empty chip. You can always change it later.'], ['#pal', 'Your parts box', 'Drag a block onto the chip, or just tap it. Grey blocks have reached their limit.'], ['#soc', 'Your chip', 'Blocks snap into the right row: masters, AXI slaves, APB peripherals. Tap a block to change it; drag it to the bin to remove it.'], ['#props', 'Block settings', 'Change the name, base address, size, wait states or power. Custom blocks let you design registers.'], ['#chk', 'Design checks', 'Red means the SoC cannot work yet, such as overlapping addresses or a missing bridge.'], ['#fd', 'Final diagram', 'Your SoC as a real block diagram with wires and addresses. Download it as PNG or SVG.']];
+$('tourb').onclick = () => U.tour(TOUR, 'socpg-tour-build');
+if (location.hash === '#tour' || !U.seen('socpg-tour-build')) setTimeout(() => U.tour(TOUR, 'socpg-tour-build'), 400);
+UI.quiz($('qz'), [
+ ['Your design has a UART and a GPIO but no bridge. What happens?', ['They work at slower speed', 'The CPU cannot reach them: they sit on APB, and only the bridge connects AXI to APB', 'The interconnect turns them into AXI slaves'], 1, 'Peripherals live on the APB bus. Without the AXI→APB bridge there is no path from the CPU to them.'],
+ ['Two blocks overlap in the address map. Why is that a design error?', ['The decoder cannot know which slave should answer', 'It wastes memory', 'It is fine if both are memories'], 0, 'Each address must select exactly one slave. With an overlap, two slaves could answer the same transfer.'],
+ ['The CPU reads address 0x9000_0000 and nothing is mapped there. What comes back?', ['OKAY with data 0', 'SLVERR from the bridge', 'DECERR from the interconnect’s default slave'], 2, 'Addresses outside every window go to the default slave, which answers DECERR (decode error).'],
+ ['Why is the DMA a master and not just a peripheral?', ['It starts its own transfers to copy memory, so it needs to drive the bus', 'Because it is faster', 'Masters do not need an address'], 0, 'The CPU sets the DMA up through its registers on APB, then the DMA moves data on AXI by itself, as a second master.']
+]);
+}
+</script>
+
+</body>
+</html>

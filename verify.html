@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Build a testbench by drag and drop, write your own test sequence, close coverage, build assertions and hunt hidden bugs.">
+<title>Verify Your SoC</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23060a14%27/%3E%3Crect x=%279%27 y=%279%27 width=%2714%27 height=%2714%27 rx=%272%27 fill=%27none%27 stroke=%27%2322d3ee%27 stroke-width=%272.5%27/%3E%3Cpath d=%27M13 5v4M19 5v4M13 23v4M19 23v4M5 13h4M5 19h4M23 13h4M23 19h4%27 stroke=%27%2322d3ee%27 stroke-width=%272%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;600;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/series.css">
+
+</head>
+<body>
+<nav class="series" aria-label="SoC Playground pages"><a class="home" href="index.html">SoC Playground home</a><a href="missions.html">1 · Missions</a><a href="build.html">2 · Build</a><a href="run.html">3 · Run</a><a href="verify.html" aria-current="page">4 · Verify</a><a href="regress.html">5 · Regression</a><a href="export.html">6 · Export</a></nav>
+<header class="band" style="padding-bottom:12px"><div class="wrap">
+<h1>Verify your SoC</h1>
+<p class="lede">Build a testbench by dragging its parts into place, then run tests that adapt to the SoC you built. Inject a bug, or let the lab hide a mystery bug, and see which tests and which testbench parts catch it. Leave a part out and see what you miss.</p>
+<nav class="toc" aria-label="On this page"><a href="#lab">Verify it</a><a href="#seq">My sequence</a><a href="#closure">Coverage closure</a><a href="#sva">Assertion builder</a><a href="#parts">Testbench parts</a><a href="#dv">DV corner</a><a href="#quiz">Quiz</a></nav>
+<div class="key"><b>Colour key:</b><span><i class="k5"></i>Drag onto the SoC (or tap to add)</span><span><i class="k1"></i>Run or step an animation</span><span><i class="k2"></i>Option you can pick</span><span><i class="k2s"></i>Option selected</span><span><i class="k3"></i>Load an example</span></div>
+</div></header>
+<main>
+<section class="band" id="lab" style="padding-top:8px"><div class="wrap">
+<div id="ban"></div><div id="chal"></div>
+<div class="demo">
+ <aside class="ctrl" aria-label="Verification controls">
+  <div class="tryhd"><b>Try it</b><span>Build the testbench, pick a bug, run tests</span></div>
+  <div><span class="lab">1. Testbench parts <small>drag into the testbench</small></span><div class="pgrid" id="tbpal"></div>
+   <div class="stack" style="margin-top:8px"><button type="button" class="ex" id="tbfull">Use every part</button><button type="button" class="ex" id="tbmin">Basic: driver, AXI monitor, model, scoreboard</button></div></div>
+  <div><label class="lab" for="bug">2. Design to test</label><select id="bug"></select><p class="hint" id="bugd" style="margin:6px 0 0"></p></div>
+  <div><span class="lab">3. Test</span><div class="stack" id="tests"></div></div>
+  <div id="rbox"><span class="lab">Random: transfers and seed</span><div class="seg" id="rn"><button type="button" class="opt" data-v="20">20</button><button type="button" class="opt" data-v="100">100</button><button type="button" class="opt" data-v="500">500</button></div>
+   <div class="step" style="margin-top:8px"><button type="button" class="stp" id="sm" aria-label="Previous seed">−</button><input type="text" id="seed" aria-label="Random seed" autocomplete="off"><button type="button" class="stp" id="sp" aria-label="Next seed">+</button></div></div>
+  <button type="button" class="act" id="run">▶ Run this test</button>
+  <button type="button" id="runall">Run every test</button>
+  <button type="button" id="clr">↺ Clear results</button>
+ </aside>
+ <div class="out">
+  <div class="chip2"><span class="tag">TESTBENCH</span>
+   <div class="zone" data-zone="tb"><h4>Your testbench<span>drag parts here · drag out to remove</span></h4><div class="tbzone" id="tbz"></div></div>
+   <div class="dutbox" id="dut"></div>
+   <div class="tbwarn" id="tbw"></div>
+  </div>
+  <div class="verdict" id="vd" aria-live="polite">Run a test to see results.</div>
+  <div class="stats" id="st"></div>
+  <div id="myst"></div>
+  <div><h3>Scoreboard log <small class="hint">tap a row for its waveform</small></h3>
+   <div class="seg" id="flt" style="max-width:360px;margin-bottom:8px"><button type="button" class="opt" data-v="all">All</button><button type="button" class="opt" data-v="bad">Failures only</button></div>
+   <div class="log"><table><thead><tr><th scope="col">#</th><th scope="col">Test</th><th scope="col">Master</th><th scope="col">Transfer</th><th scope="col">Got</th><th scope="col">Expected</th><th scope="col">Result</th></tr></thead><tbody id="lg"></tbody></table></div></div>
+  <div><h3>Waveform</h3><p class="hint" id="wcap" style="margin:0 0 6px"></p><div class="wavebox" id="wave"></div><p class="sighelp" id="sh">Tap a signal name for what it means.</p></div>
+  <div class="cov"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3 style="margin:0">Functional coverage</h3><strong class="mono" id="cp">0 %</strong></div><div class="meter"><i id="cm" style="width:0"></i></div><div id="cb"></div></div>
+ </div>
+</div>
+<div class="trash" data-zone="trash">🗑 Drop here to remove</div>
+</div></section>
+
+<section class="band alt" id="seq"><div class="wrap">
+<h2>My sequence: write your own test</h2>
+<p>A directed test is a list of reads and writes with the values you expect. Build one here. Give a read an expected value and your test checks it, on top of the scoreboard. It runs on the same design, bug and testbench as above.</p>
+<div class="demo">
+ <aside class="ctrl" aria-label="Sequence controls">
+  <div class="tryhd"><b>Try it</b><span>Add steps, then run</span></div>
+  <button type="button" id="sadd">+ Add a step</button>
+  <div><span class="lab">Or start from an example</span><div class="stack" id="sex"></div></div>
+  <button type="button" class="act" id="srun">▶ Run my sequence</button>
+  <button type="button" id="sclr">✕ Clear all steps</button>
+ </aside>
+ <div class="out">
+  <div class="scroll"><table class="seqt"><thead><tr><th scope="col">#</th><th scope="col">Op</th><th scope="col">Register or memory</th><th scope="col">Write data / expected read</th><th scope="col"><span class="hint">remove</span></th></tr></thead><tbody id="sbody"></tbody></table></div>
+  <div class="verdict" id="sres" aria-live="polite">Add steps, then run.</div>
+  <div class="log" id="slogbox" hidden><table><thead><tr><th scope="col">#</th><th scope="col">Transfer</th><th scope="col">Got</th><th scope="col">Your check</th><th scope="col">Scoreboard</th></tr></thead><tbody id="slog"></tbody></table></div>
+ </div>
+</div>
+</div></section>
+
+<section class="band" id="closure"><div class="wrap">
+<h2>Coverage closure</h2>
+<p>Random tests are cheap, so run lots of seeds and watch coverage climb. It rises fast, then flattens: the last bins need a directed test. This uses every testbench part and the design picked above.</p>
+<div class="demo">
+ <aside class="ctrl" aria-label="Coverage closure controls">
+  <div class="tryhd"><b>Try it</b><span>Random first, then directed</span></div>
+  <button type="button" class="act" id="crun">▶ Run 30 random seeds</button>
+  <button type="button" id="cdir" disabled>+ Add the directed tests</button>
+  <p class="hint" style="margin:0">Each seed runs 20 random transfers.</p>
+ </aside>
+ <div class="out"><div class="card chart" id="cchart"></div><div class="verdict" id="csay" aria-live="polite">Press Run to start.</div></div>
+</div>
+</div></section>
+
+<section class="band alt" id="sva"><div class="wrap">
+<h2>Assertion builder</h2>
+<p>An assertion is a rule that must hold on every clock cycle. Build one from parts, see it written as SystemVerilog, and check it on a waveform. It uses the transfer you selected in the log above, or an APB write to your slowest peripheral.</p>
+<div class="demo">
+ <aside class="ctrl" aria-label="Assertion builder">
+  <div class="tryhd"><b>Try it</b><span>When … then …</span></div>
+  <div><span class="lab">Examples</span><div class="stack" id="aex"></div></div>
+  <div><span class="lab">When (on the same cycle)</span><div class="arow"><select id="a1s" aria-label="First signal"></select><select id="a1o" aria-label="First condition"></select></div>
+   <div class="arow" style="margin-top:6px"><select id="a2s" aria-label="Second signal"></select><select id="a2o" aria-label="Second condition"></select></div></div>
+  <div><span class="lab">Then</span><div class="seg" id="aimp"><button type="button" class="opt big" data-v="|->">same cycle<small>|-&gt;</small></button><button type="button" class="opt big" data-v="|=>">next cycle<small>|=&gt;</small></button></div></div>
+  <div class="arow"><select id="cs" aria-label="Signal that must hold"></select><select id="co" aria-label="Condition that must hold"></select></div>
+  <button type="button" class="act" id="achk">▶ Check on the waveform</button>
+ </aside>
+ <div class="out"><div class="sva" id="atxt"></div><div class="verdict" id="ares" aria-live="polite"></div><p class="hint" id="acap" style="margin:0"></p><div class="wavebox" id="awave"></div></div>
+</div>
+</div></section>
+
+<section class="band" id="parts"><div class="wrap">
+<h2>Testbench parts</h2>
+<p>Each part has one job. A testbench only finds a bug if every part on the path from stimulus to check is there. Try removing one and running again.</p>
+<div class="cards" id="pc"></div>
+</div></section>
+
+<section class="band alt" id="dv"><div class="wrap">
+<h2>DV corner</h2>
+<div class="rules">
+ <div><h3>Tests follow the design</h3><p>The tests on this page are generated from your address map. Add a block and the tests check it too. Real testbenches do the same with a register model generated from the register spec.</p></div>
+ <div><h3>Directed tests aim; random tests explore</h3><p>Reset, register and map tests check things you thought of. Random tests hit corners you did not, but only coverage tells you what they actually reached.</p></div>
+ <div><h3>Checks need observation</h3><p>The scoreboard can only compare what a monitor saw. Without the APB monitor, nobody records which registers were touched, so register coverage stays empty.</p></div>
+ <div><h3>Assertions catch protocol bugs</h3><p>Some bugs never change the data: a burst that crosses 4 KB, an unfair arbiter, PADDR moving during a wait. Only assertions on the bus signals see them.</p></div>
+</div>
+</div></section>
+
+<section class="band" id="quiz"><div class="wrap">
+<h2>Quiz</h2>
+<div class="quiz" id="qz"></div>
+</div></section>
+
+</main>
+<footer class="band" style="padding-top:8px"><div class="wrap">
+<p style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:none"><a href="run.html">← 3 · Run</a><a href="index.html">All pages</a><a href="regress.html">5 · Regression →</a></p>
+<p>SoC Playground is a learning model: a small AXI and APB system simulated in your browser, close enough to real hardware to learn from, but not a real chip. Your design and badges are saved in this browser only.</p>
+</div></footer>
+<script src="assets/common.js"></script>
+<script src="assets/engine.js"></script>
+<script src="assets/extra.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+{
+const L = LAB, U = SOCUI, T = L.TYPES, $ = id => document.getElementById(id);
+const d = L.load(), TG = L.bugTargets(d);
+const bad = U.designBanner($('ban'), d);
+let tb = new Set(L.TB_DEFAULT), bug = null, mystery = null, test = 'reset', rn = 100, seed = 1, E = null, sel = null, flt = 'all';
+const tests = L.TESTS.filter(t => !t.need || t.need(d));
+// a trainer challenge link carries a hidden bug
+const CHB = U.shared && U.shared.bug, CH = CHB ? TG.find(g => g.blk === CHB.blk && g.bug === CHB.bug) : null;
+if (CH) $('chal').innerHTML = '<div class="verdict" style="border-color:#f472b6;background:rgba(244,114,182,.1);margin-bottom:12px"><strong style="color:#f9a8d4">🎓 Challenge from your trainer.</strong> A bug is hidden in this SoC. Run tests, read the failures, then make your diagnosis under the results.</div>';
+// design selector
+$('bug').innerHTML = '<option value="">Correct design (no bug)</option><option value="?">Mystery bug: find it yourself</option>' + TG.map((g, i) => `<option value="${i}">${U.esc(g.label)}</option>`).join('');
+$('tests').innerHTML = tests.map(t => `<button type="button" class="opt big" data-v="${t.id}"><span>${t.n}</span><small>${t.d}</small></button>`).join('');
+const pick = (id, v) => { for (const b of $(id).children) if (b.dataset.v != null) b.setAttribute('aria-pressed', b.dataset.v === String(v)); };
+function fresh() { E = L.env(d, bug, [...tb]); sel = null; render(); }
+function describeBug() {
+  const v = $('bug').value;
+  if (v === '') { bug = null; $('bugd').textContent = 'Every test should pass. If one fails, the testbench is wrong.'; }
+  else if (v === '?') { mystery = CH || TG[Math.floor(Math.random() * TG.length)]; bug = mystery; $('bugd').textContent = 'One hidden bug is somewhere in your SoC. Run tests, read the failures, then make your guess below.'; }
+  else { bug = TG[+v]; $('bugd').textContent = 'Bug injected. Run tests and see which ones catch it.'; }
+  fresh();
+}
+$('bug').onchange = describeBug;
+// testbench builder
+function tbRender() {
+  $('tbpal').innerHTML = L.TB.map(c => `<div class="pi" role="button" tabindex="0" data-c="${c.id}" style="--c:#67e8f9" aria-disabled="${tb.has(c.id)}" aria-label="Add ${c.n} to the testbench">${c.n}<small>${c.d}</small></div>`).join('');
+  for (const el of $('tbpal').querySelectorAll('.pi')) U.make(el, {data: el.dataset.c, accept: z => z.dataset.zone === 'tb', drop: (z, c) => { tb.add(c); fresh(); }, click: c => { tb.add(c); fresh(); }});
+  $('tbz').innerHTML = L.TB.filter(c => tb.has(c.id)).map(c => `<div class="pb tbc" role="button" tabindex="0" data-c="${c.id}" style="--c:#67e8f9" aria-label="${c.n}: drag out or press Enter to remove"><b>${c.n}</b><small>${c.d}</small></div>`).join('') || '<div class="empty">Empty: drag parts here</div>';
+  for (const el of $('tbz').querySelectorAll('.pb')) U.make(el, {data: el.dataset.c, placed: true, accept: z => z.dataset.zone === 'trash', drop: (z, c) => { tb.delete(c); fresh(); }, click: c => { tb.delete(c); fresh(); }});
+  const w = [];
+  if (!tb.has('drv')) w.push('No driver: tests cannot put anything on the bus, so nothing runs.');
+  if (!tb.has('amon')) w.push('No AXI monitor: transfers happen but nobody records them. Nothing can be checked or covered.');
+  if (!tb.has('ref') || !tb.has('sb')) w.push(`No ${!tb.has('ref') ? 'reference model' : 'scoreboard'}: transfers are seen but never compared with the right answer.`);
+  if (!tb.has('cov')) w.push('No coverage collector: you cannot tell what the tests exercised.');
+  if (!tb.has('pmon') && tb.has('cov')) w.push('No APB monitor: register coverage stays empty.');
+  if (!tb.has('aax')) w.push('No AXI assertions: 4 KB and arbitration problems go unnoticed.');
+  if (!tb.has('aapb')) w.push('No APB assertions: signals that change during wait states go unnoticed.');
+  $('tbw').innerHTML = w.map(x => `<span>⚠ ${x}</span>`).join('');
+  $('dut').innerHTML = `<b>Design under test:</b> your SoC, ${d.blocks.length} blocks (${d.blocks.map(b => U.esc(b.name)).join(', ') || 'empty'})${bug ? ' · <span style="color:#fca5a5">bug injected</span>' : ''}`;
+}
+$('tbfull').onclick = () => { tb = new Set(L.TB.map(c => c.id)); fresh(); };
+$('tbmin').onclick = () => { tb = new Set(L.TB_DEFAULT); fresh(); };
+// tests
+$('tests').onclick = e => { const b = e.target.closest('.opt'); if (!b) return; test = b.dataset.v; pick('tests', test); $('rbox').hidden = test !== 'random'; };
+$('rn').onclick = e => { const b = e.target.closest('.opt'); if (b) { rn = +b.dataset.v; pick('rn', rn); } };
+const setSeed = v => { seed = Math.max(1, v | 0); $('seed').value = seed; };
+$('sm').onclick = () => setSeed(seed - 1); $('sp').onclick = () => setSeed(seed + 1); $('seed').onchange = e => setSeed(+e.target.value || 1);
+$('flt').onclick = e => { const b = e.target.closest('.opt'); if (b) { flt = b.dataset.v; pick('flt', flt); table(); } };
+let last = null;
+function runTest(id) {
+  const t = tests.find(x => x.id === id);
+  if (!tb.has('drv')) return {t, res: []};
+  return {t, res: L.run(E, id === 'random' ? t.gen(d, rn, seed) : t.gen(d), t.n)};
+}
+function after() { if (!last) return; const fails = last.flatMap(x => x.res).filter(x => !x.ok).length; if (bug && $('bug').value !== '?' && fails && tb.has('amon')) L.progress.mark('caught'); if (E.cov.pct() === 100) L.progress.mark('cov100'); }
+$('run').onclick = () => { if (bad) return; last = [runTest(test)]; sel = null; render(); after(); };
+$('runall').onclick = () => { if (bad) return; last = tests.map(t => runTest(t.id)); sel = null; render(); after(); };
+$('clr').onclick = fresh;
+function verdict() {
+  const v = $('vd');
+  if (bad) { v.className = 'verdict bad'; v.innerHTML = '<strong>Fix the design first.</strong> The Build page shows what is wrong.'; return; }
+  if (!last) { v.className = 'verdict'; v.textContent = 'Run a test to see results.'; return; }
+  if (!tb.has('drv')) { v.className = 'verdict bad'; v.innerHTML = '<strong>Nothing ran.</strong> The testbench has no driver to turn the test into bus transfers.'; return; }
+  const all = last.flatMap(x => x.res), fails = all.filter(x => !x.ok), unchecked = all.filter(x => x.unchecked).length;
+  const per = last.map(x => `${x.t.n}: ${x.res.filter(r => !r.ok).length ? '<b style="color:#fca5a5">FAIL</b>' : '<b style="color:#86efac">pass</b>'}`).join(' · ');
+  if (!tb.has('amon')) { v.className = 'verdict bad'; v.innerHTML = `<strong>${all.length} transfers ran, 0 observed.</strong> Without a monitor the testbench is blind: every test “passes”, even with a bug.`; return; }
+  if (fails.length) { v.className = 'verdict bad'; v.innerHTML = `<strong>${fails.length} failure${fails.length > 1 ? 's' : ''}.</strong> ${per}<br><span class="hint">First failure: #${fails[0].i}, ${U.esc(fails[0].mism[0] || fails[0].asserts[0])}.</span>`; }
+  else { v.className = 'verdict good'; v.innerHTML = `<strong>All checks passed.</strong> ${per}${unchecked ? `<br><span style="color:#fde68a">But ${unchecked} transfer${unchecked > 1 ? 's were' : ' was'} actually wrong and nothing compared ${unchecked > 1 ? 'them' : 'it'}. A real testbench would never know.</span>` : ''}${bug && !$('bug').value.startsWith('?') && !unchecked ? '<br><span class="hint">The bug escaped these tests. Try another test or add testbench parts.</span>' : ''}`; }
+}
+function stats() {
+  const all = (last || []).flatMap(x => x.res);
+  const s = [['Transfers', all.length], ['Observed', E.log.length], ['Passed', E.log.filter(x => x.ok).length], ['Failed', E.log.filter(x => !x.ok).length], ['Assertions fired', E.log.reduce((a, x) => a + x.asserts.length, 0)], ['Coverage', E.cov.pct() + ' %']];
+  $('st').innerHTML = s.map(([k, v]) => `<div class="stat"><span>${k}</span><strong>${v}</strong></div>`).join('');
+}
+const desc = x => x.kind === 'arb' ? `${x.why}` : `${x.w ? 'WRITE' : 'READ'}${x.beats > 1 ? ' ×' + x.beats : ''} ${L.HA(x.a)} <span class="hint">${U.esc(L.nameOf(d, x.a))}</span>`;
+const got = x => x.kind === 'arb' ? x.order.map(g => g[0].toUpperCase()).join('') : x.w || x.master === 'DMA' ? x.resp : `${L.H(x.rdata)} ${x.resp}`;
+const exp = x => x.kind === 'arb' ? x.exp.map(g => g[0].toUpperCase()).join('') : x.w || x.master === 'DMA' ? x.expResp : `${L.H(x.exp)} ${x.expResp}`;
+function table() {
+  const rows = E.log.filter(x => flt === 'all' || !x.ok);
+  const lim = rows.slice(0, 600);
+  $('lg').innerHTML = lim.map(x => `<tr data-i="${x.i}"${x.i === sel ? ' class="sel"' : ''}><td>${x.i}</td><td>${U.esc(x.test)}</td><td>${x.master}</td><td>${desc(x)}</td><td class="mono">${got(x)}</td><td class="mono">${tb.has('ref') ? exp(x) : '—'}</td><td class="${x.ok ? 'ok' : 'bad'}">${x.ok ? 'pass' : 'FAIL'}${x.ok ? '' : '<br><small>' + U.esc([...x.mism, ...x.asserts].join('; ')) + '</small>'}</td></tr>`).join('') || `<tr><td colspan="7" class="hint">${last && !tb.has('amon') ? 'No monitor, so nothing was recorded.' : 'No transfers yet.'}</td></tr>`;
+}
+$('lg').onclick = e => { const r = e.target.closest('tr[data-i]'); if (!r) return; sel = +r.dataset.i; table(); wave(); aCheck(); };
+U.sigHelp($('wave'), $('sh'));
+function wave() {
+  const x = E.log.find(y => y.i === sel);
+  if (!x) { $('wave').innerHTML = '<p class="hint" style="padding:10px">Tap a row in the log.</p>'; $('wcap').textContent = ''; return; }
+  if (x.kind === 'arb') { $('wave').innerHTML = `<p class="mono" style="padding:10px;margin:0">Grant order: ${x.order.map(g => `<span class="pill ${g === 'dma' ? 'ok' : ''}" style="margin:2px">${g.toUpperCase()}</span>`).join('')}</p>`; $('wcap').textContent = `Longest wait for the DMA while it was asking: ${x.wait} grant${x.wait === 1 ? '' : 's'}. ${d.arb === 'rr' ? 'Round robin should alternate.' : 'Fixed priority serves the CPU first by design.'}`; return; }
+  const paddr = bug && bug.bug === 'paddr';
+  L.wave($('wave'), L.cycles(x, paddr ? 'paddr' : null), {badPaddr: paddr && tb.has('aapb'), label: 'Waveform of transfer ' + x.i});
+  $('wcap').textContent = x.asserts.length ? 'Assertion: ' + x.asserts.join('; ') : x.mism.length ? x.mism.join('; ') : 'This transfer passed.';
+}
+function cov() {
+  const c = E.cov, g = {};
+  for (const b of c.bins) (g[b.g] = g[b.g] || []).push(b);
+  $('cp').textContent = c.pct() + ' %'; $('cm').style.width = c.pct() + '%';
+  $('cb').innerHTML = Object.entries(g).map(([k, bs]) => `<h3>${k} <small class="hint">${bs.filter(b => c.hits[b.id]).length}/${bs.length}</small></h3><div class="bins">${bs.map(b => `<span class="bin${c.hits[b.id] ? ' hit' : ''}">${U.esc(b.n)}${c.hits[b.id] ? `<i>${c.hits[b.id]}</i>` : ''}</span>`).join('')}</div>`).join('');
+}
+function caughtBy(g) {
+  const hits = [];
+  for (const t of tests) { const e = L.env(d, g, L.TB.map(c => c.id)); const r = L.run(e, t.id === 'random' ? t.gen(d, 100, 1) : t.gen(d), t.n); if (r.some(x => !x.ok)) hits.push(t.n); }
+  return hits;
+}
+function mysteryBox() {
+  if ($('bug').value !== '?') {
+    $('myst').innerHTML = bug && last ? `<div class="card"><h3>Which tests catch this bug?</h3><p class="hint" style="margin:0">With every testbench part in place: <b>${caughtBy(bug).join(', ') || 'none of these tests'}</b>.</p></div>` : '';
+    return;
+  }
+  $('myst').innerHTML = `<div class="card props"><h3>Your diagnosis</h3><label class="lab" for="gs">Which bug is hiding in the SoC?</label><select id="gs"><option value="">Pick one…</option>${TG.map((g, i) => `<option value="${i}">${U.esc(g.label)}</option>`).join('')}</select><div class="stack"><button type="button" class="act" id="chkg">✓ Check my guess</button><button type="button" id="rev">Show the answer</button></div><p id="gr" aria-live="polite" style="margin:0"></p></div>`;
+  const say = h => $('gr').innerHTML = h;
+  $('chkg').onclick = () => { const v = $('gs').value; if (v === '') { say('Pick a bug first.'); return; } const g = TG[+v]; if (g === mystery) L.progress.mark('mystery'); say(g === mystery ? `<b style="color:#86efac">Correct!</b> ${U.esc(g.label)}. It is caught by: ${caughtBy(g).join(', ')}.` : `<b style="color:#fca5a5">Not this one.</b> Look again at which test fails first, and which block the failing address belongs to.`); };
+  $('rev').onclick = () => say(`The hidden bug was <b>${U.esc(mystery.label)}</b>. Tests that catch it: ${caughtBy(mystery).join(', ')}.`);
+}
+function render() { tbRender(); verdict(); stats(); table(); wave(); cov(); mysteryBox(); }
+$('pc').innerHTML = L.TB.map(c => `<div class="card"><h3 style="color:#67e8f9">${c.n}</h3><p>${c.d}.</p><p class="hint">${{drv: 'Without it nothing reaches the design.', amon: 'Without it nothing is observed, so nothing is checked.', pmon: 'Needed for register coverage and APB assertions.', ref: 'Without it there is no expected value.', sb: 'Without it predictions and observations are never compared.', cov: 'Without it you cannot measure what was tested.', aax: 'Catches bursts across 4 KB and unfair arbitration.', aapb: 'Catches signals that move during APB wait states.'}[c.id]}</p></div>`).join('');
+pick('tests', test); pick('rn', rn); pick('flt', flt); setSeed(1); $('rbox').hidden = true;
+if (CH) { $('bug').value = '?'; $('bug').disabled = true; }
+describeBug();
+
+/* ---------- my sequence ---------- */
+const TGT = [];
+for (const b of d.blocks) { if (L.TYPES[b.t].k === 'mem') { TGT.push([b.base, `${b.name}[0]`]); TGT.push([b.base + 4, `${b.name}[1]`]); } else if (L.TYPES[b.t].k === 'per' || b.t === 'dma') for (const r of L.regsOf(b)) TGT.push([(b.base + r.o) >>> 0, `${b.name}.${r.n} (${r.a})`]); }
+TGT.push([0x60000000, 'Unmapped 0x6000_0000']);
+let steps = [];
+const hexs = v => '0x' + (v >>> 0).toString(16).toUpperCase();
+const ph = s2 => { const v = parseInt(String(s2).replace(/_/g, '').replace(/^0x/i, ''), 16); return Number.isFinite(v) ? v >>> 0 : null; };
+function sDraw() {
+  $('sbody').innerHTML = steps.map((st, i) => `<tr data-i="${i}"><td>${i + 1}</td><td><select data-f="w" aria-label="Operation ${i + 1}"><option value="0"${st.w ? '' : ' selected'}>Read</option><option value="1"${st.w ? ' selected' : ''}>Write</option></select></td><td><select data-f="a" aria-label="Target ${i + 1}">${TGT.map(([a, n]) => `<option value="${a}"${a === st.a ? ' selected' : ''}>${U.esc(n)}</option>`).join('')}</select></td><td><input type="text" data-f="v" value="${st.v}" placeholder="${st.w ? 'data, e.g. 0x41' : 'expected, or blank'}" aria-label="${st.w ? 'Write data' : 'Expected read value'} ${i + 1}" autocomplete="off"></td><td><button type="button" class="del" data-del="${i}" aria-label="Remove step ${i + 1}" style="min-height:36px;padding:0 10px">✕</button></td></tr>`).join('') || '<tr><td colspan="5" class="hint">No steps yet. Add one, or load an example.</td></tr>';
+}
+$('sbody').onchange = e => { const tr = e.target.closest('tr[data-i]'); if (!tr) return; const st = steps[+tr.dataset.i], f = e.target.dataset.f; if (f === 'w') st.w = +e.target.value; else if (f === 'a') st.a = +e.target.value; else st.v = e.target.value.trim(); sDraw(); };
+$('sbody').onclick = e => { const b = e.target.closest('[data-del]'); if (b) { steps.splice(+b.dataset.del, 1); sDraw(); } };
+$('sadd').onclick = () => { steps.push({w: 0, a: TGT[0][0], v: ''}); sDraw(); };
+$('sclr').onclick = () => { steps = []; sDraw(); };
+const tA = (t, n) => { const b = d.blocks.find(x => x.t === t); if (!b) return null; const r = L.regsOf(b).find(x => x.n === n); return r ? (b.base + r.o) >>> 0 : null; };
+const EX = [];
+{ const u = tA('uart', 'BAUD'); if (u != null) EX.push(['UART registers', [{w: 0, a: u, v: '0x1B2'}, {w: 1, a: u, v: '0x100'}, {w: 0, a: u, v: '0x100'}, {w: 0, a: tA('uart', 'STATUS'), v: '0x1'}, {w: 1, a: tA('uart', 'CTRL'), v: '0x1'}, {w: 0, a: tA('uart', 'CTRL'), v: '0x1'}, {w: 1, a: u, v: '0x1B2'}, {w: 0, a: u, v: '0x1B2'}]]); }
+{ const g = tA('gpio', 'DIR'); if (g != null) EX.push(['GPIO loop-back', [{w: 1, a: g, v: '0x0F'}, {w: 1, a: tA('gpio', 'OUT'), v: '0x0A'}, {w: 0, a: tA('gpio', 'OUT'), v: '0x0A'}, {w: 0, a: g, v: '0x0F'}, {w: 0, a: tA('gpio', 'IN'), v: '0xAA'}]]); }
+{ const t = tA('timer', 'LOAD'); if (t != null) EX.push(['Timer interrupt', [{w: 1, a: t, v: '0x2'}, {w: 1, a: tA('timer', 'CTRL'), v: '0x1'}, {w: 0, a: tA('timer', 'COUNT'), v: ''}, {w: 0, a: tA('timer', 'INT'), v: '0x1'}, {w: 1, a: tA('timer', 'INT'), v: '0x1'}, {w: 0, a: tA('timer', 'INT'), v: '0x0'}, {w: 0, a: t, v: '0x2'}]]); }
+{ const m = d.blocks.find(b => L.TYPES[b.t].k === 'mem' && b.t !== 'rom'); if (m) EX.push([`${m.name} read/write`, [{w: 1, a: m.base, v: '0xDEADBEEF'}, {w: 1, a: m.base + 4, v: '0x80000001'}, {w: 0, a: m.base, v: '0xDEADBEEF'}, {w: 0, a: m.base + 4, v: '0x80000001'}, {w: 0, a: 0x60000000, v: ''}]]); }
+$('sex').innerHTML = EX.map((x, i) => `<button type="button" class="ex" data-i="${i}">${U.esc(x[0])}</button>`).join('') || '<p class="hint">Add blocks to get examples.</p>';
+$('sex').onclick = e => { const b = e.target.closest('[data-i]'); if (b) { steps = EX[+b.dataset.i][1].map(x => ({...x})); sDraw(); } };
+$('srun').onclick = () => {
+  if (bad) return;
+  if (!steps.length) { $('sres').className = 'verdict bad'; $('sres').innerHTML = '<strong>No steps yet.</strong>'; return; }
+  if (!tb.has('drv')) { $('sres').className = 'verdict bad'; $('sres').innerHTML = '<strong>Nothing ran.</strong> The testbench above has no driver.'; return; }
+  const ops = steps.map(st => ({w: st.w, a: st.a, d: st.w ? (ph(st.v) || 0) : 0, why: 'my sequence'}));
+  const SE = L.env(d, bug, [...tb]); const res = L.run(SE, ops, 'My sequence').filter(r => r.master === 'CPU');
+  let checked = 0, uf = 0;
+  const rows = res.map((r, i) => { const st = steps[i], exp = !st.w && st.v !== '' ? ph(st.v) : null; let mine = '—'; if (exp != null) { checked++; const ok = r.rdata === exp && r.resp === 'OKAY'; if (!ok) uf++; mine = ok ? '<span class="pill ok">pass</span>' : `<span class="pill bad">FAIL</span> expected ${hexs(exp)}`; }
+    return `<tr><td>${i + 1}</td><td>${r.w ? 'WRITE' : 'READ'} ${L.HA(r.a)} <span class="hint">${U.esc(L.nameOf(d, r.a))}</span></td><td class="mono">${r.w ? hexs(r.d) : hexs(r.rdata)} ${r.resp}</td><td>${mine}</td><td class="${r.ok ? 'ok' : 'bad'}">${tb.has('sb') && tb.has('ref') ? (r.ok ? 'pass' : 'FAIL: ' + U.esc([...r.mism, ...r.asserts].join('; '))) : '—'}</td></tr>`; });
+  $('slogbox').hidden = false; $('slog').innerHTML = rows.join('');
+  const sbf = res.filter(r => !r.ok).length;
+  $('sres').className = 'verdict ' + (uf || sbf ? 'bad' : 'good');
+  $('sres').innerHTML = `<strong>${uf || sbf ? `${uf} of your checks and ${sbf} scoreboard checks failed.` : 'Your sequence passed.'}</strong> ${checked} step${checked === 1 ? '' : 's'} had your own expected value.${checked < 5 ? ' Give 5 or more reads an expected value to earn the Test Writer badge.' : ''}`;
+  if (checked >= 5 && !uf) L.progress.mark('seq');
+};
+sDraw();
+
+/* ---------- coverage closure ---------- */
+let CE = null, pts = [];
+function chart(extra) {
+  const W = 640, H = 230, X = i => 46 + i * (W - 70) / 31, Y = v => 200 - v * 1.7;
+  let s2 = `<line x1="46" y1="200" x2="${W - 20}" y2="200" stroke="#2c4475"/><line x1="46" y1="30" x2="46" y2="200" stroke="#2c4475"/>`;
+  for (const v of [0, 50, 100]) s2 += `<text x="40" y="${Y(v) + 4}" text-anchor="end" fill="#8fa2c2" font-size="12">${v}%</text><line x1="46" x2="${W - 20}" y1="${Y(v)}" y2="${Y(v)}" stroke="#1f2c47" stroke-dasharray="3 4"/>`;
+  s2 += `<text x="${W / 2}" y="224" text-anchor="middle" fill="#8fa2c2" font-size="12">random seeds →</text>`;
+  if (pts.length) s2 += `<polyline points="${pts.map((v, i) => `${X(i + 1)},${Y(v)}`).join(' ')}" fill="none" stroke="#22d3ee" stroke-width="3"/>` + pts.map((v, i) => `<circle cx="${X(i + 1)}" cy="${Y(v)}" r="3.5" fill="#22d3ee"/>`).join('');
+  if (extra != null) s2 += `<line x1="${X(pts.length)}" y1="${Y(pts[pts.length - 1])}" x2="${X(pts.length) + 14}" y2="${Y(extra)}" stroke="#34d399" stroke-width="3"/><circle cx="${X(pts.length) + 14}" cy="${Y(extra)}" r="6" fill="#34d399"/><text x="${X(pts.length) + 10}" y="${Y(extra) - 10}" text-anchor="end" fill="#86efac" font-size="12" font-weight="700">+ directed: ${extra}%</text>`;
+  $('cchart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Coverage against random seeds">${s2}</svg>`;
+}
+$('crun').onclick = () => {
+  if (bad) return;
+  CE = L.env(d, bug, L.TB.map(c => c.id)); pts = [];
+  const rt = tests.find(t => t.id === 'random');
+  for (let sd = 1; sd <= 30; sd++) { L.run(CE, rt.gen(d, 20, sd), 'Random'); pts.push(CE.cov.pct()); if (pts[pts.length - 1] === 100) break; }
+  chart();
+  const miss = CE.cov.bins.filter(b => !CE.cov.hits[b.id]);
+  $('csay').className = 'verdict' + (miss.length ? '' : ' good');
+  $('csay').innerHTML = miss.length ? `<strong>Random stalled at ${pts[pts.length - 1]} %.</strong> ${pts.length} seeds. Still missing: ${miss.slice(0, 8).map(b => U.esc(b.n)).join(', ')}${miss.length > 8 ? ` and ${miss.length - 8} more` : ''}. Random picks addresses and data by chance, so exact corners (the first or last word of a memory, a DMA burst, an interrupt) are rarely hit. These need directed tests.` : `<strong>100 % with random alone</strong> in ${pts.length} seeds. Your SoC is small enough for random to cover it.`;
+  $('cdir').disabled = !miss.length;
+};
+$('cdir').onclick = () => { if (!CE) return; for (const t of tests) if (t.id !== 'random') L.run(CE, t.gen(d), t.n); chart(CE.cov.pct()); $('csay').className = 'verdict good'; $('csay').innerHTML = `<strong>Directed tests took coverage to ${CE.cov.pct()} %.</strong> That is how real projects close coverage: random for breadth, directed for the corners.`; $('cdir').disabled = true; if (CE.cov.pct() === 100) L.progress.mark('cov100'); };
+chart();
+
+/* ---------- assertion builder ---------- */
+const OPS = [['1', 'is 1'], ['0', 'is 0'], ['rose', 'rose'], ['fell', 'fell'], ['stable', 'is stable']];
+function sample() {
+  const x = E.log.find(y => y.i === sel); if (x && x.kind !== 'arb') return {t: x, from: `transfer #${x.i} from the log`};
+  const per = d.blocks.filter(b => L.TYPES[b.t].k === 'per' && L.regsOf(b).some(r => r.a === 'RW')).sort((a, b) => L.waitOf(b) - L.waitOf(a))[0];
+  const sys = L.system(d, bug);
+  if (per) { const r = L.regsOf(per).find(q => q.a === 'RW'), a = per.base + r.o, g = sys.access(1, a, 0x5A); return {t: {w: 1, a, d: 0x5A, ...g}, from: `a write to ${per.name}.${r.n} (${L.waitOf(per)} wait states)`}; }
+  const m = d.blocks.find(b => L.TYPES[b.t].k === 'mem'); const a = m ? m.base : 0x60000000, g = sys.access(1, a, 0x5A); return {t: {w: 1, a, d: 0x5A, ...g}, from: 'a write'};
+}
+function aSpec() { const g = id => $(id).value; return {name: 'my rule', a1: {sig: g('a1s'), op: g('a1o')}, a2: g('a2s') ? {sig: g('a2s'), op: g('a2o')} : null, imp: aimp, c: {sig: g('cs'), op: g('co')}}; }
+let aimp = '|=>';
+function aFill(rows) {
+  const sigs = [...new Set(rows)].filter(r => r !== 'ACLK');
+  const fill = (id, list, blank) => { const cur = $(id).value; $(id).innerHTML = (blank ? '<option value="">(none)</option>' : '') + list.map(x => `<option${x === cur ? ' selected' : ''}>${x}</option>`).join(''); };
+  fill('a1s', sigs); fill('a2s', sigs, true); fill('cs', sigs);
+  for (const id of ['a1o', 'a2o', 'co']) if (!$(id).options.length) $(id).innerHTML = OPS.map(([v, n]) => `<option value="${v}">${n}</option>`).join('');
+}
+function aCheck() {
+  const {t, from} = sample(), paddr = bug && bug.bug === 'paddr';
+  const wv = L.cycles(t, paddr ? 'paddr' : null); aFill(wv.rows);
+  const a = aSpec(); $('atxt').textContent = L.assertion.text(a);
+  const r = L.assertion.check(wv.C, a), marks = {}; for (const i of r.passes) marks[i] = 'pass'; for (const i of r.fails) marks[i] = 'fail';
+  L.wave($('awave'), wv, {marks, label: 'Assertion check waveform'});
+  $('acap').textContent = `Checked on ${from}. Dashed green boxes: the rule held. Red: it failed.`;
+  $('ares').className = 'verdict ' + (r.fails.length ? 'bad' : r.tries ? 'good' : '');
+  $('ares').innerHTML = !r.tries ? '<strong>Never triggered.</strong> The “when” part never happened on this waveform, so the rule was not tested. That is a vacuous pass. Pick another transfer or another rule.' : r.fails.length ? `<strong>Assertion FIRED</strong> on ${r.fails.length} cycle${r.fails.length > 1 ? 's' : ''} out of ${r.tries} checks.` : `<strong>Held</strong> on all ${r.tries} check${r.tries > 1 ? 's' : ''}.`;
+  if (r.fails.length && bug) L.progress.mark('sva-fire');
+}
+$('aex').innerHTML = L.assertion.EXAMPLES.map((x, i) => `<button type="button" class="ex" data-i="${i}">${U.esc(x.name)}</button>`).join('');
+$('aex').onclick = e => { const b = e.target.closest('[data-i]'); if (!b) return; const x = L.assertion.EXAMPLES[+b.dataset.i]; aFill(L.cycles(sample().t).rows.concat(['PSEL', 'PENABLE', 'PADDR', 'PREADY', 'PSLVERR'])); $('a1s').value = x.a1.sig; $('a1o').value = x.a1.op; $('a2s').value = x.a2 ? x.a2.sig : ''; $('a2o').value = x.a2 ? x.a2.op : '1'; $('cs').value = x.c.sig; $('co').value = x.c.op; aimp = x.imp; pick('aimp', aimp); aCheck(); };
+$('aimp').onclick = e => { const b = e.target.closest('.opt'); if (b) { aimp = b.dataset.v; pick('aimp', aimp); aCheck(); } };
+for (const id of ['a1s', 'a1o', 'a2s', 'a2o', 'cs', 'co']) $(id).onchange = aCheck;
+pick('aimp', aimp); aCheck();
+$('bug').addEventListener('change', () => { sel = null; aCheck(); });
+$('aex').querySelector('[data-i="1"]').click();
+if (location.hash === '#sva' || location.hash === '#seq') setTimeout(() => document.getElementById(location.hash.slice(1)).scrollIntoView(), 50);
+UI.quiz($('qz'), [
+ ['You remove the scoreboard and run all tests on a buggy design. What happens?', ['Tests fail', 'Everything looks like it passes, because nothing compares the design with the expected values', 'The simulator stops'], 1, 'Without a scoreboard, wrong answers flow past unnoticed. A passing result only means something if the checks exist.'],
+ ['The DMA crosses a 4 KB boundary but copies the data correctly. Which part catches it?', ['The scoreboard', 'AXI assertions', 'The coverage collector'], 1, 'The data is right, so the scoreboard is happy. The rule is about the bus protocol, so an assertion on the address and length catches it.'],
+ ['Coverage is 100 % and all tests pass. Is the design bug-free?', ['Yes', 'No: coverage only shows what was exercised, not that every check was strong enough', 'Only if random tests ran'], 1, 'Coverage measures stimulus. Bugs can still hide where the checks are weak or missing, as you saw when removing testbench parts.']
+]);
+}
+</script>
+
+</body>
+</html>
