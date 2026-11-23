@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="512" height="512" role="img" aria-label="SoC Playground icon">
+<rect width="120" height="120" rx="26" fill="#060A14"/>
+<g transform="translate(9 9) scale(0.85)"><g fill="#3B5A8F">
+<rect x="32" y="6" width="6" height="14" rx="3"/><rect x="50" y="6" width="6" height="14" rx="3"/><rect x="64" y="6" width="6" height="14" rx="3"/><rect x="82" y="6" width="6" height="14" rx="3"/>
+<rect x="32" y="100" width="6" height="14" rx="3"/><rect x="50" y="100" width="6" height="14" rx="3"/><rect x="64" y="100" width="6" height="14" rx="3"/><rect x="82" y="100" width="6" height="14" rx="3"/>
+<rect x="6" y="32" width="14" height="6" rx="3"/><rect x="6" y="50" width="14" height="6" rx="3"/><rect x="6" y="64" width="14" height="6" rx="3"/><rect x="6" y="82" width="14" height="6" rx="3"/>
+<rect x="100" y="32" width="14" height="6" rx="3"/><rect x="100" y="50" width="14" height="6" rx="3"/><rect x="100" y="64" width="14" height="6" rx="3"/><rect x="100" y="82" width="14" height="6" rx="3"/>
+</g>
+<rect x="18" y="18" width="84" height="84" rx="18" fill="#0C1424" stroke="#22D3EE" stroke-width="3"/>
+<rect x="29" y="29" width="28" height="28" rx="7" fill="#22D3EE"/>
+<rect x="63" y="29" width="28" height="28" rx="7" fill="none" stroke="#3B5A8F" stroke-width="2.5" stroke-dasharray="5 4"/>
+<rect x="29" y="63" width="28" height="28" rx="7" fill="#A78BFA"/>
+<rect x="63" y="63" width="28" height="28" rx="7" fill="#34D399"/>
+<g transform="translate(77 23) rotate(14) translate(-14 -14)"><rect x="0" y="0" width="28" height="28" rx="7" fill="#FBBF24"/><path d="M10 8 L20 14 L10 20 Z" fill="#3D2C06"/></g></g>
+</svg>
